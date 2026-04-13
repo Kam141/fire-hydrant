@@ -1,37 +1,38 @@
 .page {
   min-height: 100vh;
   background:
-    radial-gradient(1200px 600px at 12% -10%, rgba(255, 92, 92, 0.3), transparent 58%),
-    radial-gradient(900px 500px at 92% -10%, rgba(123, 15, 15, 0.35), transparent 62%),
-    #101216;
-  padding: 26px;
-  color: #f5f6fa;
+    radial-gradient(900px 420px at 8% -10%, rgba(255, 137, 102, 0.35), transparent 62%),
+    radial-gradient(800px 360px at 94% -4%, rgba(214, 69, 69, 0.3), transparent 58%),
+    linear-gradient(180deg, #fffaf2, #fff6eb 45%, #fff4e8);
+  padding: 0;
+  color: #1f2630;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .shell {
-  max-width: 1200px;
-  margin: 0 auto;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 26px;
-  padding: 18px 18px 24px;
-  background: linear-gradient(180deg, rgba(14, 17, 23, 0.92), rgba(12, 14, 18, 0.86));
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.48);
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  padding: 18px 32px 24px;
+  background: transparent;
+  box-shadow: none;
 }
 
 .topNav {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  padding: 6px 6px 14px;
+  gap: 2rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid #f0dfcf;
 }
 
 .brandWrap {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 0.75rem;
 }
 
 .brandMark {
@@ -42,203 +43,369 @@
   place-items: center;
   font-weight: 800;
   color: #fff;
-  background: linear-gradient(145deg, #ca1f1f, #730e0e);
+  background: linear-gradient(145deg, #d53a2b, #a51d16);
 }
 
 .brandTitle {
   font-size: 15px;
   font-weight: 700;
+  margin: 0;
 }
 
 .brandSub {
   font-size: 11px;
-  color: #b6bac5;
+  color: #766d68;
+  margin: 0;
 }
 
 .navLinks {
   display: flex;
-  gap: 24px;
-  color: #a5aab5;
+  gap: 2rem;
+  color: #6e6c6a;
   font-size: 14px;
 }
 
 .navLinks a:hover {
-  color: #fff;
+  color: #ba2e22;
 }
 
 .navActions {
   display: flex;
-  gap: 8px;
+  gap: 0.75rem;
 }
 
 .signIn,
 .signUp {
   border-radius: 10px;
-  padding: 9px 12px;
+  padding: 0.75rem 1rem;
   font-weight: 700;
   font-size: 13px;
+  text-decoration: none;
 }
 
 .signIn {
-  color: #eceef3;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #1f2630;
+  border: 1px solid #d8cdc2;
+  background: #fff;
 }
 
 .signUp {
   color: #fff;
-  background: linear-gradient(120deg, #d12626, #8f1111);
+  background: linear-gradient(130deg, #d64032, #af241a);
 }
 
 .hero {
-  margin-top: 24px;
+  margin-top: 2rem;
   display: grid;
-  grid-template-columns: 1.3fr 0.9fr;
-  gap: 14px;
+  grid-template-columns: 1.35fr 0.9fr;
+  gap: 2rem;
 }
 
 .heroLeft {
-  border-radius: 22px;
-  padding: 28px;
-  background: linear-gradient(150deg, rgba(111, 18, 18, 0.62), rgba(22, 24, 32, 0.8));
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  padding: 2rem;
+  border: 1px solid #ecdfd3;
+  background: linear-gradient(140deg, #fffaf2, #fff5eb);
 }
 
 .kicker {
   font-size: 12px;
   font-weight: 800;
-  letter-spacing: 0.14em;
-  color: #ffb6b6;
+  letter-spacing: 0.12em;
+  color: #c84937;
+  margin: 0 0 1rem 0;
 }
 
 .heroLeft h1 {
-  margin-top: 12px;
-  font-size: clamp(34px, 4.4vw, 58px);
+  margin: 0 0 1rem 0;
+  font-size: clamp(34px, 4.6vw, 62px);
   line-height: 1.02;
 }
 
 .heroLeft p {
-  margin-top: 14px;
+  margin: 0 0 1.5rem 0;
   max-width: 680px;
-  color: #d2d8e5;
+  color: #4a4f5d;
   line-height: 1.6;
 }
 
 .ctaRow {
-  margin-top: 20px;
   display: flex;
-  gap: 10px;
+  gap: 1rem;
+  margin-bottom: 1rem;
 }
 
 .primaryBtn,
 .ghostBtn {
-  padding: 12px 16px;
+  padding: 1rem 1.25rem;
   border-radius: 11px;
   font-weight: 700;
   font-size: 14px;
+  text-decoration: none;
 }
 
 .primaryBtn {
   color: #fff;
-  background: linear-gradient(120deg, #d92f2f, #8c1111);
+  background: linear-gradient(120deg, #d84937, #b4291f);
 }
 
 .ghostBtn {
-  color: #f2f3f7;
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  background: rgba(255, 255, 255, 0.04);
+  color: #232733;
+  border: 1px solid #d7ccc1;
+  background: #fff;
+}
+
+.heroBadge {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  font-size: 12px;
+  font-weight: 700;
+  color: #b33123;
+  border: 1px solid #edcfc6;
+  background: #fff0ea;
 }
 
 .heroCard {
-  border-radius: 22px;
-  padding: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: linear-gradient(170deg, rgba(20, 23, 30, 0.92), rgba(17, 20, 25, 0.9));
+  border-radius: 20px;
+  padding: 1.5rem;
+  border: 1px solid #eadfd5;
+  background: #fffdfb;
 }
 
 .heroCardTitle {
   font-size: 14px;
-  color: #9ca4b6;
+  color: #6c717d;
+  margin: 0 0 1rem 0;
 }
 
 .heroMetrics {
-  margin-top: 10px;
   display: grid;
-  gap: 10px;
+  gap: 0.75rem;
 }
 
 .heroMetrics article {
-  border-radius: 14px;
-  padding: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  padding: 1rem;
+  border: 1px solid #e8ddd3;
+  background: #fff;
 }
 
 .heroMetrics span {
   display: block;
-  color: #9ca4b6;
+  color: #7a808f;
   font-size: 12px;
 }
 
 .heroMetrics strong {
   display: block;
-  margin-top: 3px;
-  font-size: 20px;
+  margin-top: 0.25rem;
+  font-size: 30px;
+  line-height: 1.02;
+  color: #252b36;
+}
+
+.panelSection,
+.workflowSection {
+  margin-top: 2rem;
+  border-radius: 18px;
+  padding: 2rem;
+  border: 1px solid #efe2d5;
+  background: linear-gradient(180deg, #fffaf2, #fff7ef);
+}
+
+.panelSection h2,
+.workflowSection h2 {
+  font-size: clamp(28px, 3.2vw, 44px);
+  line-height: 1.05;
+  margin: 0 0 1.5rem 0;
+  text-align: center;
 }
 
 .featureGrid {
-  margin-top: 16px;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
 }
 
 .featureCard {
   border-radius: 14px;
-  padding: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.04);
+  padding: 1.5rem;
+  border: 1px solid #2f3442;
+  background: linear-gradient(165deg, #2b2f3a, #1f232e);
+  color: #f5f7fc;
+}
+
+.featureIcon {
+  width: 54px;
+  height: 54px;
+  color: #ef6656;
+  margin: 0 auto 1rem auto;
 }
 
 .featureCard h3 {
-  font-size: 16px;
+  margin: 0 0 0.75rem 0;
+  font-size: clamp(23px, 2.2vw, 38px);
+  line-height: 1.06;
+  text-align: center;
 }
 
 .featureCard p {
-  color: #afb6c4;
-  margin-top: 6px;
+  margin: 0;
+  color: #cfd6e5;
   line-height: 1.5;
+  text-align: center;
+}
+
+.workflowFlow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.stepCard {
+  flex: 1;
+  min-width: 180px;
+  max-width: 220px;
+  text-align: center;
+  padding: 1.5rem;
+  border-radius: 14px;
+  border: 1px solid #eadfd4;
+  background: #fffdf9;
+}
+
+.stepCard p {
+  color: #1f2630;
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 0.75rem 0;
+}
+
+.stepIcon {
+  margin: 0 auto 0.75rem auto;
+  width: 64px;
+  height: 64px;
+  color: #171d28;
+}
+
+.stepCard strong {
+  display: block;
+  margin: 0;
+  font-size: clamp(18px, 1.5vw, 24px);
+  line-height: 1.2;
+  color: #1f2630;
+}
+
+.flowArrow {
+  font-size: 48px;
+  font-weight: 700;
+  color: #1f2630;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.bottomGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.bottomGrid article {
+  border-radius: 12px;
+  padding: 1.25rem;
+  border: 1px solid #2f3442;
+  background: linear-gradient(165deg, #2d3240, #222732);
+  text-align: center;
+}
+
+.bottomGrid h3 {
+  color: #f2f5fb;
+  font-size: 17px;
+  margin: 0 0 0.5rem 0;
+}
+
+.bottomGrid p {
+  margin: 0;
+  color: #c8cfde;
+  line-height: 1.5;
+  font-size: 13px;
 }
 
 .moduleStrip {
-  margin-top: 14px;
-  border-radius: 14px;
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: linear-gradient(120deg, rgba(148, 24, 24, 0.25), rgba(255, 255, 255, 0.03));
+  margin-top: 2rem;
+  border-radius: 12px;
+  padding: 1rem;
+  border: 1px solid #ecd9c8;
+  background: #fff8f0;
   display: flex;
   flex-wrap: wrap;
-  gap: 9px;
+  justify-content: center;
+  gap: 0.75rem;
 }
 
 .moduleStrip a {
   border-radius: 999px;
-  padding: 8px 12px;
+  padding: 0.75rem 1rem;
   font-size: 13px;
   font-weight: 700;
   color: #fff;
-  background: rgba(255, 255, 255, 0.1);
+  background: linear-gradient(120deg, #d74636, #b1261c);
+  text-decoration: none;
 }
 
-@media (max-width: 980px) {
+/* Responsive */
+@media (max-width: 1040px) {
+  .shell {
+    padding: 1rem;
+  }
+
   .topNav {
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  .navLinks {
+    justify-content: center;
   }
 
   .hero {
     grid-template-columns: 1fr;
+    gap: 1.5rem;
   }
 
-  .featureGrid {
+  .featureGrid,
+  .bottomGrid {
     grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .workflowFlow {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .flowArrow {
+    display: none;
+  }
+
+  .stepCard {
+    max-width: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .moduleStrip {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .moduleStrip a {
+    width: 100%;
+    max-width: 280px;
+    text-align: center;
   }
 }

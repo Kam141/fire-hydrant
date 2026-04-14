@@ -153,6 +153,10 @@
   font-size: 13px;
 }
 
+.userBadgeWrap {
+  position: relative;
+}
+
 .userBadge {
   display: flex;
   align-items: center;
@@ -161,6 +165,12 @@
   border-radius: 12px;
   padding: 8px;
   background: #fff;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.userBadge:hover {
+  background: #f8fafc;
 }
 
 .bell {
@@ -173,6 +183,22 @@
   font-size: 11px;
   font-weight: 700;
   background: linear-gradient(145deg, #ce2f2f, #8f1414);
+}
+
+.avatarWrap {
+  width: 33px;
+  height: 33px;
+  border-radius: 999px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatarImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .avatar {
@@ -190,6 +216,55 @@
 .userMail {
   color: var(--ink-500);
   font-size: 10px;
+}
+
+.dropdownMenu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 180px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e4e8f0;
+  padding: 8px 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+}
+
+.dropdownItem,
+.dropdownItemDanger {
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  color: #353c4d;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.dropdownItem:hover {
+  background: #f1f3f8;
+}
+
+.dropdownItemDanger {
+  color: var(--red-500);
+  font-weight: 600;
+  font-family: inherit;
+}
+
+.dropdownItemDanger:hover {
+  background: #fff0f0;
+}
+
+.dropdownDivider {
+  height: 1px;
+  background: #e4e8f0;
+  margin: 4px 0;
 }
 
 .kpiStrip {

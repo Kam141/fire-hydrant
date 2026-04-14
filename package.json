@@ -14,6 +14,7 @@
     "@types/react-dom": "19.2.3",
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.3",
+    "firebase": "^12.12.0",
     "next": "16.2.3",
     "react": "19.2.5",
     "react-dom": "19.2.5",

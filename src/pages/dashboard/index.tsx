@@ -6,11 +6,12 @@ import MetricBox from '@/components/ui/metric-box';
 import StatusPill from '@/components/ui/status-pill';
 import styles from '@/styles/Dashboard.module.css';
 import { SystemState } from '@/types/system';
+import { withAuth } from '@/components/hoc/withAuth';
 
 const firePath = 'M0 68 C48 74, 88 26, 146 52 C186 72, 218 72, 255 62 C293 52, 328 108, 368 100 C410 90, 432 54, 480 44';
 const tempPath = 'M0 40 C34 46, 82 62, 126 88 C166 120, 206 130, 248 82 C286 46, 332 80, 374 86 C416 90, 440 50, 480 62';
 
-export default function DashboardPage() {
+function DashboardPage() {
   const [state, setState] = useState<SystemState | null>(null);
 
   useEffect(() => {
@@ -75,3 +76,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
+export default withAuth(DashboardPage);

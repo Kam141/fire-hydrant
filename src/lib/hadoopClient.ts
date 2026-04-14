@@ -1,8 +1,7 @@
-// src/lib/hadoopClient.ts
-
 import fs from 'fs/promises';
 import path from 'path';
 import { SensorLogEntry } from '@/types/system';
+import { notifyTelegram } from './telegramNotifier';
 
 const LOG_DIR = path.join(process.cwd(), 'logs');
 const FALLBACK_LOG_FILE = path.join(LOG_DIR, 'hadoop-sensor-log.jsonl');
@@ -160,28 +159,35 @@ async function webhdfsRead(): Promise<SensorLogEntry[]> {
 export async function appendSensorLog(entry: SensorLogEntry) {
   const line = `${JSON.stringify(entry)}\n`;
   const mode = process.env.HADOOP_MODE || 'local';
-
+  let writeSuccess = false;
+ 
+  // ── Tulis ke HDFS atau file lokal ────────────────────────────────────────
   if (mode.toLowerCase() === 'webhdfs') {
     try {
       await webhdfsWrite(line);
       console.log('[AppendSensorLog] Log berhasil dikirim ke WebHDFS');
-      return;
+      writeSuccess = true;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       console.error('[AppendSensorLog] WebHDFS gagal, fallback ke file lokal:', errorMsg);
-      console.error('[AppendSensorLog] Tips debugging:');
-      console.error('  1. Cek IP NameNode: HADOOP_NAMENODE_IP=' + process.env.HADOOP_NAMENODE_IP);
-      console.error('  2. Cek port WebHDFS: HADOOP_NAMENODE_PORT=' + (process.env.HADOOP_NAMENODE_PORT || '9870'));
-      console.error('  3. Cek HADOOP_DATANODE_HOSTS sudah di-set dengan benar');
-      console.error('  4. Pastikan firewall tidak memblokir koneksi ke port DataNode (9864)');
     }
   }
-
-  await ensureFallbackFile();
-  await fs.appendFile(FALLBACK_LOG_FILE, line, 'utf8');
-  console.log('[AppendSensorLog] Log tersimpan ke file lokal: ' + FALLBACK_LOG_FILE);
+ 
+  if (!writeSuccess) {
+    await ensureFallbackFile();
+    await fs.appendFile(FALLBACK_LOG_FILE, line, 'utf8');
+    console.log('[AppendSensorLog] Log tersimpan ke file lokal: ' + FALLBACK_LOG_FILE);
+  }
+ 
+  // ── Kirim notifikasi Telegram (non-blocking, tidak gagalkan proses utama) ─
+  try {
+    // Ambil 20 entri terbaru untuk ringkasan (baca dari sumber yang tersedia)
+    const recentEntries = await readSensorLogs(20).catch(() => [entry]);
+    await notifyTelegram(entry, recentEntries);
+  } catch (err) {
+    console.error('[AppendSensorLog] Telegram notify error:', err);
+  }
 }
-
 export async function readSensorLogs(limit = 100): Promise<SensorLogEntry[]> {
   const mode = process.env.HADOOP_MODE || 'local';
 

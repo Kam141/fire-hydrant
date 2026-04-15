@@ -129,14 +129,13 @@ export default function HomePage() {
 
 
             <div className={styles.navActions}>
-              <p>Belum punya akun?</p>
               <Link href="/auth/register" className={styles.signUp}>
                 Daftar
               </Link>
             </div>
           </header>
 
-          <section className={styles.hero}>
+          
             <div className={styles.heroLeft}>
               <p className={styles.kicker}>Emergency-Ready Platform</p>
               <h1>
@@ -156,24 +155,6 @@ export default function HomePage() {
               <div className={styles.heroBadge}>Fire-Safe Operation</div>
             </div>
 
-            <div className={styles.heroCard}>
-              <p className={styles.heroCardTitle}>Live Snapshot</p>
-              <div className={styles.heroMetrics}>
-                <article>
-                  <span>Fire Sensor</span>
-                  <strong>Realtime</strong>
-                </article>
-                <article>
-                  <span>Valve Control</span>
-                  <strong>Auto + Manual</strong>
-                </article>
-                <article>
-                  <span>Notification</span>
-                  <strong>Telegram Alert</strong>
-                </article>
-              </div>
-            </div>
-          </section>
 
           <section id="features" className={styles.panelSection}>
             <h2>Fitur Unggulan</h2>

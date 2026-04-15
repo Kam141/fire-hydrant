@@ -3,6 +3,7 @@ import styles from '@/styles/Dashboard.module.css';
 import { useAuth } from '@/context/AuthContext';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 
 interface NavbarFrameProps {
   title: string;
@@ -13,6 +14,19 @@ export default function NavbarFrame({ title, active }: NavbarFrameProps) {
   const { user, signOut } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // 2. Inisialisasi router
+  const router = useRouter(); 
+
+  // 3. Buat fungsi handler untuk sign out
+  const handleSignOut = async () => {
+    try {
+      await signOut(); // Pastikan signOut dari context bersifat async
+      router.push('/'); // Redirect ke landing page (akar /)
+    } catch (error) {
+      console.error("Gagal sign out:", error);
+    }
+  };
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -72,7 +86,7 @@ export default function NavbarFrame({ title, active }: NavbarFrameProps) {
               Settings
             </Link>
             <div className={styles.dropdownDivider} />
-            <button className={styles.dropdownItemDanger} onClick={signOut}>
+            <button className={styles.dropdownItemDanger} onClick={handleSignOut}>
               Sign Out
             </button>
           </div>

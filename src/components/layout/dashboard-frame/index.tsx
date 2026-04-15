@@ -36,7 +36,7 @@ export default function DashboardFrame({ title, active, children }: DashboardFra
           <NavbarFrame title={title} active={active} />
 
           {/* Content */}
-          {children}
+          <div className={styles.workspaceContent}>{children}</div>
         </section>
 
       </div>

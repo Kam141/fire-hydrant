@@ -194,6 +194,10 @@
   border-radius: 4px;
 }
 
+.info-top {
+  margin-bottom: 1.5rem;
+}
+
 .info h3 {
   margin: 0;
   margin-bottom: 1rem;

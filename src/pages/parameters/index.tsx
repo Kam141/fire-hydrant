@@ -112,16 +112,8 @@ function ParametersPage() {
 
   return (
     <>
-      <Head>
-        <title>Parameter Sensor - Hydrant Monitor</title>
-      </Head>
 
       <DashboardFrame title="PARAMETER SENSOR" active="parameters">
-        <div className={styles.container}>
-          <div className={styles.header}>
-            <h1>Parameter Sensor</h1>
-            <p>Atur nilai ambang batas untuk semua sensor sistem</p>
-          </div>
 
           {error && (
             <div className={styles['alert-error']}>
@@ -136,7 +128,26 @@ function ParametersPage() {
             </div>
           )}
 
+
+          <div className={styles.info}>
+            <h3>Informasi Parameter:</h3>
+            <p>
+              Parameter sensor digunakan untuk menentukan kapan sistem hidran secara otomatis mengaktifkan alarm
+              atau mengambil tindakan. Silakan sesuaikan nilai-nilai ini berdasarkan kebutuhan lokasi Anda.
+            </p>
+            <ul>
+              <li><strong>Suhu:</strong> Aktivator manual jika melebihi ambang batas</li>
+              <li><strong>Indikasi Api:</strong> Memicu alert jika terdeteksi</li>
+              <li><strong>Tekanan:</strong> Minimum untuk operasi sistem</li>
+              <li><strong>Laju Aliran:</strong> Minimum untuk membuka katup</li>
+              <li><strong>Tingkat Air:</strong> Peringatan jika air menjadi rendah</li>
+            </ul>
+          </div>
+
           <div className={styles['form-container']}>
+            <div className={styles['form-header']}>
+              <p className={styles['form-description']}>Atur nilai ambang batas untuk semua sensor sistem</p>
+            </div>
             <div className={styles['form-grid']}>
               {/* Temperature Threshold */}
               <div className={styles['form-group']}>
@@ -257,27 +268,12 @@ function ParametersPage() {
             </div>
           </div>
 
-          <div className={styles.info}>
-            <h3>Informasi Parameter:</h3>
-            <p>
-              Parameter sensor digunakan untuk menentukan kapan sistem hidran secara otomatis mengaktifkan alarm
-              atau mengambil tindakan. Silakan sesuaikan nilai-nilai ini berdasarkan kebutuhan lokasi Anda.
-            </p>
-            <ul>
-              <li><strong>Suhu:</strong> Aktivator manual jika melebihi ambang batas</li>
-              <li><strong>Indikasi Api:</strong> Memicu alert jika terdeteksi</li>
-              <li><strong>Tekanan:</strong> Minimum untuk operasi sistem</li>
-              <li><strong>Laju Aliran:</strong> Minimum untuk membuka katup</li>
-              <li><strong>Tingkat Air:</strong> Peringatan jika air menjadi rendah</li>
-            </ul>
-          </div>
 
           {parameters.updatedAt && (
             <div className={styles['last-updated']}>
               Terakhir diperbarui: {new Date(parameters.updatedAt).toLocaleString('id-ID')}
             </div>
           )}
-        </div>
       </DashboardFrame>
     </>
   );

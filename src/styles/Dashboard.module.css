@@ -37,7 +37,7 @@
   padding: 18px 14px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 30Px;
 }
 
 .logoWrap {
@@ -132,6 +132,10 @@
 .workspace {
   padding: 18px;
   background: linear-gradient(180deg, #f9fafc, #f1f3f8);
+}
+
+.workspaceContent {
+  margin-top: 28px;
 }
 
 .topbar {
@@ -407,7 +411,7 @@
   background: linear-gradient(170deg, #ffffff, #fafbfe);
 }
 
-.metricGlow {
+/* .metricGlow {
   position: absolute;
   width: 78px;
   height: 78px;
@@ -415,7 +419,7 @@
   right: -24px;
   border-radius: 999px;
   background: radial-gradient(circle, rgba(218, 61, 61, 0.2), transparent 70%);
-}
+} */
 
 .metricLabel {
   color: #818a9d;

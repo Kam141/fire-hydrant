@@ -28,8 +28,8 @@ export default function NavbarFrame({ title, active }: NavbarFrameProps) {
   // 3. Buat fungsi handler untuk sign out
   const handleSignOut = async () => {
     try {
-      await signOut(); // Pastikan signOut dari context bersifat async
-      router.push('/'); // Redirect ke landing page (akar /)
+      await signOut(); 
+      router.push('/'); 
     } catch (error) {
       console.error("Gagal sign out:", error);
     }
@@ -48,7 +48,7 @@ export default function NavbarFrame({ title, active }: NavbarFrameProps) {
   return (
     <header className={styles.topbar}>
       <div>
-        <h1>{active === 'dashboard' ? 'Dashboard Overview' : title}</h1>
+        <h1>{active === 'dashboard' ? 'Dashboard' : title}</h1>
         <p className={styles.topbarSub}>Real-time hydrant monitoring and control center</p>
       </div>
 

@@ -110,11 +110,7 @@ function UserManagement() {
       </Head>
 
       <DashboardFrame title="MANAJEMEN PENGGUNA" active="admin">
-        <div className={styles.container}>
-          <div className={styles.header}>
-            <h1>Manajemen Pengguna</h1>
-            <p>Kelola peran dan izin pengguna</p>
-          </div>
+
 
           {error && (
             <div className={styles['alert-error']}>
@@ -128,6 +124,15 @@ function UserManagement() {
               <span>✓ {successMessage}</span>
             </div>
           )}
+
+          <div className={`${styles.info} ${styles['info-top']}`}>
+            <h3>Informasi Peran:</h3>
+            <ul>
+              <li><strong>Admin:</strong> Akses penuh ke semua fitur termasuk manajemen pengguna</li>
+              <li><strong>Petugas:</strong> Akses ke kontrol hidran dan diagnostik</li>
+              <li><strong>User:</strong> Akses terbatas untuk melihat status sistem</li>
+            </ul>
+          </div>
 
           {loading ? (
             <div className={styles['loading-spinner']}>
@@ -189,15 +194,6 @@ function UserManagement() {
             </div>
           )}
 
-          <div className={styles.info}>
-            <h3>Informasi Peran:</h3>
-            <ul>
-              <li><strong>Admin:</strong> Akses penuh ke semua fitur termasuk manajemen pengguna</li>
-              <li><strong>Petugas:</strong> Akses ke kontrol hidran dan diagnostik</li>
-              <li><strong>User:</strong> Akses terbatas untuk melihat status sistem</li>
-            </ul>
-          </div>
-        </div>
       </DashboardFrame>
     </>
   );

@@ -84,6 +84,20 @@
   margin-bottom: 2rem;
 }
 
+.form-header {
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.form-description {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: #334155;
+  line-height: 1.6;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -251,6 +265,14 @@
 
   .form-container {
     padding: 1.5rem;
+  }
+
+  .form-header {
+    margin-bottom: 1rem;
+  }
+
+  .form-description {
+    font-size: 0.98rem;
   }
 
   .form-grid {

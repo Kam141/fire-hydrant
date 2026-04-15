@@ -102,6 +102,38 @@ function StepTeamIcon() {
   );
 }
 
+function HeroHydrantScene() {
+  return (
+    <svg viewBox="0 0 520 340" aria-hidden="true" className={styles.heroArtwork}>
+      <defs>
+        <linearGradient id="heroBg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#ffe8d7" />
+          <stop offset="100%" stopColor="#ffd6bf" />
+        </linearGradient>
+        <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#84c9ff" />
+          <stop offset="100%" stopColor="#3b8bd1" />
+        </linearGradient>
+      </defs>
+
+      <rect x="8" y="8" width="504" height="324" rx="24" fill="url(#heroBg)" />
+      <circle cx="425" cy="88" r="48" fill="#fff4ea" />
+      <path d="M72 244h370" stroke="#d68f72" strokeWidth="12" strokeLinecap="round" />
+      <rect x="208" y="150" width="104" height="94" rx="18" fill="#df3e2f" />
+      <rect x="190" y="132" width="140" height="28" rx="12" fill="#ef6454" />
+      <rect x="228" y="112" width="64" height="24" rx="8" fill="#c83427" />
+      <circle cx="260" cy="194" r="23" fill="#fff0e5" stroke="#a22318" strokeWidth="7" />
+      <path d="M260 176v36M242 194h36" stroke="#a22318" strokeWidth="7" strokeLinecap="round" />
+      <path d="M314 180c43 6 77 22 96 38" stroke="#5aa9eb" strokeWidth="9" strokeLinecap="round" />
+      <path d="M391 216c16 11 28 24 34 38" stroke="url(#water)" strokeWidth="11" strokeLinecap="round" />
+      <circle cx="431" cy="266" r="20" fill="#9dd5ff" opacity="0.78" />
+      <circle cx="116" cy="104" r="8" fill="#f4aa84" />
+      <circle cx="140" cy="86" r="6" fill="#f4aa84" />
+      <circle cx="164" cy="107" r="5" fill="#f4aa84" />
+    </svg>
+  );
+}
+
 export default function HomePage() {
   return (
     <>
@@ -111,7 +143,7 @@ export default function HomePage() {
       </Head>
 
       <main className={styles.page}>
-        <section className={styles.shell}>
+        <div className={styles.shell}>
           <header className={styles.topNav}>
             <div className={styles.brandWrap}>
               <div className={styles.brandMark}>H</div>
@@ -123,10 +155,9 @@ export default function HomePage() {
 
             <nav className={styles.navLinks}>
               <a href="#features">Features</a>
+              <a href="#about">Workflow</a>
               <a href="#modules">Modules</a>
-              <a href="#about">About</a>
             </nav>
-
 
             <div className={styles.navActions}>
               <Link href="/auth/register" className={styles.signUp}>
@@ -135,134 +166,138 @@ export default function HomePage() {
             </div>
           </header>
 
-          
-            <div className={styles.heroLeft}>
-              <p className={styles.kicker}>Emergency-Ready Platform</p>
-              <h1>
-                Sistem Monitoring Hydrant
-                <br />
-                untuk Respons Cepat
-              </h1>
-              <p>
-                Pantau sensor secara real-time, jalankan auto-control valve, terima notifikasi Telegram,
-                dan baca log Hadoop dalam satu command center.
-              </p>
-              <div className={styles.ctaRow}>
-                <Link href="/auth/login" className={styles.primaryBtn}>
-                  Masuk
-                </Link>
+          <div className={styles.sectionStack}>
+            <section className={styles.hero}>
+              <div className={styles.heroLeft}>
+                <p className={styles.kicker}>Emergency-Ready Platform</p>
+                <h1>Sistem Monitoring Hydrant untuk Respons Cepat</h1>
+                <p>
+                  Pantau sensor secara real-time, jalankan auto-control valve, terima notifikasi
+                  Telegram, dan baca log Hadoop dalam satu command center.
+                </p>
+                <div className={styles.ctaRow}>
+                  <Link href="/auth/login" className={styles.primaryBtn}>
+                    Masuk
+                  </Link>
+                </div>
+                <div className={styles.heroBadge}>Fire-safe operation untuk tim lapangan</div>
               </div>
-              <div className={styles.heroBadge}>Fire-Safe Operation</div>
-            </div>
 
+              <div className={styles.heroRight}>
+                <HeroHydrantScene />
+              </div>
+            </section>
 
-          <section id="features" className={styles.panelSection}>
-            <h2>Fitur Unggulan</h2>
-            <div className={styles.featureGrid}>
-              <article className={styles.featureCard}>
-                <div className={styles.featureIcon}>
-                  <FeatureValveIcon />
-                </div>
-                <h3>Sistem Katup Otomatis (Automatic Valve System)</h3>
-                <p>
-                  Katup terbuka saat sensor api meningkat untuk merespon tanda-tanda api dan menjaga distribusi air.
-                </p>
-              </article>
-              
-              <article className={styles.featureCard}>
-                <div className={styles.featureIcon}>
-                  <FeatureAlertIcon />
-                </div>
-                <h3>Integrasi Notifikasi Instan (Instant Alert Integration)</h3>
-                <p>
-                  Peringatan dikirim secara real-time ke tim pemadam melalui Telegram agar tindakan lebih cepat.
-                </p>
-              </article>
-              
-              <article className={styles.featureCard}>
-                <div className={styles.featureIcon}>
-                  <FeatureMapIcon />
-                </div>
-                <h3>Pelacakan Lokasi Berbasis Peta (Map-Based Location Tracking)</h3>
-                <p>Data hydrant terhubung dengan lokasi untuk memudahkan koordinasi tim saat kondisi darurat.</p>
-              </article>
-            </div>
-          </section>
+            <section id="features" className={styles.panelSection}>
+              <div className={styles.sectionHeading}>
+                <h2>Fitur Unggulan</h2>
+              </div>
+              <div className={styles.featureGrid}>
+                <article className={styles.featureCard}>
+                  <div className={styles.featureIcon}>
+                    <FeatureValveIcon />
+                  </div>
+                  <h3>Automatic Valve System</h3>
+                  <p>Katup terbuka saat sensor api meningkat agar distribusi air cepat dan stabil.</p>
+                </article>
 
-          <section id="about" className={styles.workflowSection}>
-            <h2>Bagaimana Cara Kerjanya</h2>
-            <div className={styles.workflowFlow}>
-              <article className={styles.stepCard}>
-                <p>Step 1</p>
-                <div className={styles.stepIcon}>
-                  <StepSensorIcon />
-                </div>
-                <strong>Sensor Pendeteksi</strong>
-              </article>
-              
-              <span className={styles.flowArrow} aria-hidden>
-                →
-              </span>
-              
-              <article className={styles.stepCard}>
-                <p>Step 2</p>
-                <div className={styles.stepIcon}>
-                  <StepControlIcon />
-                </div>
-                <strong>Pusat Command Center</strong>
-              </article>
-              
-              <span className={styles.flowArrow} aria-hidden>
-                →
-              </span>
-              
-              <article className={styles.stepCard}>
-                <p>Step 3</p>
-                <div className={styles.stepIcon}>
-                  <StepValveIcon />
-                </div>
-                <strong>Aktuasi Katup</strong>
-              </article>
-              
-              <span className={styles.flowArrow} aria-hidden>
-                →
-              </span>
-              
-              <article className={styles.stepCard}>
-                <p>Step 4</p>
-                <div className={styles.stepIcon}>
-                  <StepTeamIcon />
-                </div>
-                <strong>Tim Pemadam Diluncurkan</strong>
-              </article>
-            </div>
-          </section>
+                <article className={styles.featureCard}>
+                  <div className={styles.featureIcon}>
+                    <FeatureAlertIcon />
+                  </div>
+                  <h3>Instant Alert Integration</h3>
+                  <p>Peringatan real-time ke Telegram tim pemadam supaya keputusan lebih cepat.</p>
+                </article>
 
-          <section id="modules" className={styles.bottomGrid}>
-            <article>
-              <h3>Real-time Monitoring</h3>
-              <p>Data sensor api, suhu, tekanan, dan flow ditampilkan terus menerus.</p>
-            </article>
-            
-            <article>
-              <h3>Automatic Protection</h3>
-              <p>Valve terbuka otomatis saat indikator kebakaran melewati ambang batas.</p>
-            </article>
-            
-            <article>
-              <h3>Audit and Logs</h3>
-              <p>Semua data dicatat periodik ke Hadoop untuk evaluasi dan investigasi.</p>
-            </article>
-          </section>
+                <article className={styles.featureCard}>
+                  <div className={styles.featureIcon}>
+                    <FeatureMapIcon />
+                  </div>
+                  <h3>Map-based Location Tracking</h3>
+                  <p>Lokasi hydrant terhubung ke data sistem untuk koordinasi darurat yang akurat.</p>
+                </article>
+              </div>
+            </section>
 
-          <section className={styles.moduleStrip}>
-            <Link href="/dashboard">Dashboard</Link>
-            <Link href="/auto-control">Kontrol Otomatis</Link>
-            <Link href="/manual-control">Kontrol Manual</Link>
-            <Link href="/notifications">Notifikasi</Link>
-            <Link href="/log-read">Log Read</Link>
-          </section>
-        </section>
+            <section id="about" className={styles.workflowSection}>
+              <div className={styles.sectionHeading}>
+
+                <h2>Alur Operasi Hydrant Guard</h2>
+              </div>
+
+              <div className={styles.workflowFlow}>
+                <article className={styles.stepCard}>
+                  <p>Step 1</p>
+                  <div className={styles.stepIcon}>
+                    <StepSensorIcon />
+                  </div>
+                  <strong>Sensor Pendeteksi</strong>
+                </article>
+
+                <span className={styles.flowArrow} aria-hidden>
+                  &rarr;
+                </span>
+
+                <article className={styles.stepCard}>
+                  <p>Step 2</p>
+                  <div className={styles.stepIcon}>
+                    <StepControlIcon />
+                  </div>
+                  <strong>Pusat Command Center</strong>
+                </article>
+
+                <span className={styles.flowArrow} aria-hidden>
+                  &rarr;
+                </span>
+
+                <article className={styles.stepCard}>
+                  <p>Step 3</p>
+                  <div className={styles.stepIcon}>
+                    <StepValveIcon />
+                  </div>
+                  <strong>Aktuasi Katup</strong>
+                </article>
+
+                <span className={styles.flowArrow} aria-hidden>
+                  &rarr;
+                </span>
+
+                <article className={styles.stepCard}>
+                  <p>Step 4</p>
+                  <div className={styles.stepIcon}>
+                    <StepTeamIcon />
+                  </div>
+                  <strong>Tim Pemadam Diluncurkan</strong>
+                </article>
+              </div>
+            </section>
+
+            <section id="modules" className={styles.bottomGrid}>
+              <article>
+                <h3>Real-time Monitoring</h3>
+                <p>Data sensor api, suhu, tekanan, dan flow ditampilkan terus menerus.</p>
+              </article>
+
+              <article>
+                <h3>Automatic Protection</h3>
+                <p>Valve terbuka otomatis saat indikator kebakaran melewati ambang batas.</p>
+              </article>
+
+              <article>
+                <h3>Audit and Logs</h3>
+                <p>Semua data dicatat periodik ke Hadoop untuk evaluasi dan investigasi.</p>
+              </article>
+            </section>
+
+            <section className={styles.moduleStrip}>
+              <Link href="/dashboard">Dashboard</Link>
+              <Link href="/auto-control">Kontrol Otomatis</Link>
+              <Link href="/manual-control">Kontrol Manual</Link>
+              <Link href="/notifications">Notifikasi</Link>
+              <Link href="/log-read">Log Read</Link>
+            </section>
+          </div>
+        </div>
       </main>
     </>
   );

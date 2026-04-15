@@ -4,10 +4,11 @@ import DashboardFrame from '@/components/layout/dashboard-frame';
 import MetricBox from '@/components/ui/metric-box';
 import StatusPill from '@/components/ui/status-pill';
 import styles from '@/styles/Dashboard.module.css';
-import { SystemState } from '@/types/system';
+import { SystemState, SensorParameters } from '@/types/system';
 
 export default function AutoControlPage() {
   const [state, setState] = useState<SystemState | null>(null);
+  const [parameters, setParameters] = useState<SensorParameters | null>(null);
   const [loading, setLoading] = useState(false);
 
   const loadStatus = async () => {
@@ -16,8 +17,21 @@ export default function AutoControlPage() {
     if (payload.ok) setState(payload.data as SystemState);
   };
 
+  const loadParameters = async () => {
+    try {
+      const response = await fetch('/api/parameters');
+      const payload = await response.json();
+      if (payload.success && payload.data) {
+        setParameters(payload.data);
+      }
+    } catch (error) {
+      console.error('Error loading parameters:', error);
+    }
+  };
+
   useEffect(() => {
     loadStatus();
+    loadParameters();
     const timer = setInterval(loadStatus, 2000);
     return () => clearInterval(timer);
   }, []);
@@ -55,8 +69,8 @@ export default function AutoControlPage() {
           </p>
 
           <div className={styles.ruleBox}>
-            <p>Rule 1: Fire &gt;= 70% and Temp &gt;= 40C =&gt; Warning</p>
-            <p>Rule 2: Fire = 100% and Temp &gt;= 60C =&gt; Critical</p>
+            <p>Rule 1: Fire &gt;= {parameters?.firePercentThreshold ?? 70}% and Temp &gt;= {parameters?.temperatureThreshold ? Math.floor(parameters.temperatureThreshold * 0.67) : 40}°C =&gt; Warning</p>
+            <p>Rule 2: Fire = 100% and Temp &gt;= {parameters?.temperatureThreshold ?? 60}°C =&gt; Critical</p>
             <p>Action: Warning/Critical =&gt; Valve Open</p>
           </div>
 

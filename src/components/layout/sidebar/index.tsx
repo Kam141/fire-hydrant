@@ -6,19 +6,34 @@ import { useRouter } from 'next/router';
 import { useAuth } from '@/context/AuthContext';
 
 interface SidebarFrameProps {
-  active: 'dashboard' | 'auto' | 'manual' | 'notif' | 'logs';
+  active: 'dashboard' | 'auto' | 'manual' | 'notif' | 'logs' | 'admin' | 'parameters';
 }
 
 
-const menus = [
+const baseMenus = [
   { key: 'dashboard', label: 'Dashboard', href: '/dashboard' },
-  { key: 'auto', label: 'Kontrol Otomatis', href: '/auto-control' },
-  { key: 'manual', label: 'Kontrol Manual', href: '/manual-control' },
   { key: 'notif', label: 'Notifikasi', href: '/notifications' },
   { key: 'logs', label: 'Log Read', href: '/log-read' },
 ] as const;
 
 export default function SidebarFrame({ active }: SidebarFrameProps) {
+  const { role } = useAuth();
+  
+  // Add admin menu item if user is admin
+  const menus = [
+    ...baseMenus,
+    ...(role === 'admin' 
+      ? [{ key: 'admin' as const, label: 'Manajemen Pengguna', href: '/admin/user-management' }]
+      : []),
+    ...(role === 'admin' || role === 'petugas'
+      ? [
+          { key: 'auto', label: 'Kontrol Otomatis', href: '/auto-control' },
+          { key: 'manual', label: 'Kontrol Manual', href: '/manual-control' },
+          { key: 'parameters' as const, label: 'Parameter Sensor', href: '/parameters' },
+        ]
+      : []),
+  ];
+
   return (
     <aside className={styles.sidebar}>
       <div className={styles.logoWrap}>

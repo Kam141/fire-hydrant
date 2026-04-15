@@ -9,7 +9,7 @@ import NavbarFrame from '../navbar';
 
 interface DashboardFrameProps {
   title: string;
-  active: 'dashboard' | 'auto' | 'manual' | 'notif' | 'logs';
+  active: 'dashboard' | 'auto' | 'manual' | 'notif' | 'logs' | 'admin' | 'parameters';
   children: ReactNode;
 }
 

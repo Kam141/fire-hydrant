@@ -18,13 +18,7 @@ function getWebHdfsUrl(): string | undefined {
   return undefined;
 }
 
-/**
- * Rewrite DataNode hostname ke IP yang bisa dijangkau dari Next.js server.
- * NameNode mengembalikan hostname internal (misal: hadoop-datanode3),
- * tapi Next.js tidak bisa resolve hostname itu — harus diganti ke IP.
- */
 function rewriteDataNodeUrl(location: string): string {
-  // Ambil mapping dari env, format: "hostname1=IP1,hostname2=IP2"
   const mappingEnv = process.env.HADOOP_DATANODE_HOSTS || '';
 
   if (!mappingEnv) {
@@ -200,8 +194,10 @@ export async function readSensorLogs(limit = 100): Promise<SensorLogEntry[]> {
     }
   }
 
-  await ensureFallbackFile();
-  const raw = await fs.readFile(FALLBACK_LOG_FILE, 'utf8');
-  const parsed = await parseJsonLines(raw);
-  return parsed.slice(-limit).reverse();
+  // await ensureFallbackFile();
+  // const raw = await fs.readFile(FALLBACK_LOG_FILE, 'utf8');
+  // const parsed = await parseJsonLines(raw);
+  // return parsed.slice(-limit).reverse();
+
+  throw new Error('Mode baca log tidak valid atau semua metode baca gagal');
 }

@@ -37,7 +37,16 @@ export default function SidebarFrame({ active }: SidebarFrameProps) {
   return (
     <aside className={styles.sidebar}>
       <div className={styles.logoWrap}>
-        <div className={styles.logoBadge}>H</div>
+        <div className={styles.logoBadge}>
+          <Image
+            src="/logo.png"
+            alt="Hydrant Guard Logo"
+            width={42}
+            height={42}
+            className={styles.logoBadgeImg}
+            priority
+          />
+        </div>
         <div>
           <p className={styles.logoText}>Hydrant Guard</p>
           <p className={styles.logoSub}>Fire Safety Grid</p>

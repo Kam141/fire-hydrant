@@ -2,6 +2,7 @@
 // Wrap all pages with AuthProvider so auth state is available everywhere
 
 import type { AppProps } from 'next/app';
+import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { AuthProvider } from '@/context/AuthContext';
 // import Navbar from '@/components/navbar';
@@ -15,6 +16,9 @@ export default function App({ Component, pageProps }: AppProps) {
 
   return (
     <AuthProvider>
+      <Head>
+        <link rel="icon" type="image/png" href="/logo.png" />
+      </Head>
       <Component {...pageProps} />
     </AuthProvider>
   );

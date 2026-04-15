@@ -1,5 +1,6 @@
 import Head from 'next/head';
 import Link from 'next/link';
+import Image from 'next/image';
 import styles from '@/styles/Landing.module.css';
 
 function FeatureValveIcon() {
@@ -146,7 +147,16 @@ export default function HomePage() {
         <div className={styles.shell}>
           <header className={styles.topNav}>
             <div className={styles.brandWrap}>
-              <div className={styles.brandMark}>H</div>
+              <div className={styles.brandMark}>
+                <Image
+                  src="/logo.png"
+                  alt="Hydrant Guard Logo"
+                  width={40}
+                  height={40}
+                  className={styles.brandMarkImg}
+                  priority
+                />
+              </div>
               <div>
                 <p className={styles.brandTitle}>Hydrant Guard</p>
                 <p className={styles.brandSub}>Smart Fire Monitoring</p>

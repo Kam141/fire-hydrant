@@ -55,10 +55,18 @@ export default function ManualControlPage() {
           </p>
 
           <div className={styles.actionRow}>
-            <button disabled={loading} className={`${styles.button} ${styles.primary}`} onClick={() => controlValve(true)}>
+            <button
+              disabled={loading}
+              className={`${styles.button} ${state?.valveOpen ? styles.primary : styles.ghost}`}
+              onClick={() => controlValve(true)}
+            >
               Buka Valve
             </button>
-            <button disabled={loading} className={`${styles.button} ${styles.danger}`} onClick={() => controlValve(false)}>
+            <button
+              disabled={loading}
+              className={`${styles.button} ${state?.valveOpen ? styles.ghost : styles.danger}`}
+              onClick={() => controlValve(false)}
+            >
               Tutup Valve
             </button>
           </div>

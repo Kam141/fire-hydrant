@@ -27,8 +27,8 @@ export default function SidebarFrame({ active }: SidebarFrameProps) {
       : []),
     ...(role === 'admin' || role === 'petugas'
       ? [
-          { key: 'auto', label: 'Kontrol Otomatis', href: '/auto-control' },
-          { key: 'manual', label: 'Kontrol Manual', href: '/manual-control' },
+          { key: 'auto', label: 'Kontrol Valve', href: '/auto-control' },
+          // { key: 'manual', label: 'Kontrol Manual', href: '/manual-control' },
           { key: 'parameters' as const, label: 'Parameter Sensor', href: '/parameters' },
         ]
       : []),

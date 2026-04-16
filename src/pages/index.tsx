@@ -193,9 +193,9 @@ export default function HomePage() {
                 <div className={styles.heroBadge}>Fire-safe operation untuk tim lapangan</div>
               </div>
 
-              <div className={styles.heroRight}>
+              {/* <div className={styles.heroRight}>
                 <HeroHydrantScene />
-              </div>
+              </div> */}
             </section>
 
             <section id="features" className={styles.panelSection}>

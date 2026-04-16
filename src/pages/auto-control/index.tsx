@@ -48,13 +48,25 @@ export default function AutoControlPage() {
     setLoading(false);
   };
 
+  const controlValve = async (open: boolean) => {
+    setLoading(true);
+    const response = await fetch('/api/control/manual', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ open, operator: 'Petugas Web' }),
+    });
+    const payload = await response.json();
+    if (payload.ok) setState(payload.data as SystemState);
+    setLoading(false);
+  };
+
   return (
     <>
       <Head>
         <title>Kontrol Otomatis - Hydrant Monitor</title>
       </Head>
 
-      <DashboardFrame title="KONTROL OTOMATIS" active="auto">
+      <DashboardFrame title="KONTROL VALVE" active="auto">
         <section className={styles.kpiStrip}>
           <MetricBox label="Mode" value={state?.controlMode ?? '-'} sub="Current" />
           <MetricBox label="Valve" value={state?.valveOpen ? 'Open' : 'Closed'} sub="Current" />
@@ -75,14 +87,53 @@ export default function AutoControlPage() {
           </div>
 
           <div className={styles.actionRow}>
-            <button disabled={loading} className={`${styles.button} ${styles.primary}`} onClick={() => changeMode('AUTO')}>
+            <button
+              disabled={loading}
+              className={`${styles.button} ${state?.controlMode === 'AUTO' ? styles.primary : styles.ghost}`}
+              onClick={() => changeMode('AUTO')}
+            >
               Aktifkan AUTO
             </button>
-            <button disabled={loading} className={`${styles.button} ${styles.ghost}`} onClick={() => changeMode('MANUAL')}>
+            <button
+              disabled={loading}
+              className={`${styles.button} ${state?.controlMode === 'MANUAL' ? styles.primary : styles.ghost}`}
+              onClick={() => changeMode('MANUAL')}
+            >
               Pindah MANUAL
             </button>
           </div>
         </section>
+
+        {state?.controlMode === 'MANUAL' ? (
+          <section className={styles.panelCard}>
+            <h2>Manual Valve Command</h2>
+            <p>
+              Gunakan mode ini saat petugas perlu override keputusan otomatis, misalnya untuk simulasi atau emergency.
+            </p>
+
+            <div className={styles.actionRow}>
+              <button
+                disabled={loading}
+                className={`${styles.button} ${state?.valveOpen ? styles.primary : styles.ghost}`}
+                onClick={() => controlValve(true)}
+              >
+                Buka Valve
+              </button>
+              <button
+                disabled={loading}
+                className={`${styles.button} ${state?.valveOpen ? styles.ghost : styles.danger}`}
+                onClick={() => controlValve(false)}
+              >
+                Tutup Valve
+              </button>
+            </div>
+
+            <div className={styles.noteCard}>
+              <p>Last Action</p>
+              <strong>{state?.lastAction ?? '-'}</strong>
+            </div>
+          </section>
+        ) : null}
       </DashboardFrame>
     </>
   );

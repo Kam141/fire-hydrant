@@ -69,8 +69,8 @@ export default function AutoControlPage() {
           </p>
 
           <div className={styles.ruleBox}>
-            <p>Rule 1: Fire &gt;= {parameters?.firePercentThreshold ?? 70}% and Temp &gt;= {parameters?.temperatureThreshold ? Math.floor(parameters.temperatureThreshold * 0.67) : 40}°C =&gt; Warning</p>
-            <p>Rule 2: Fire = 100% and Temp &gt;= {parameters?.temperatureThreshold ?? 60}°C =&gt; Critical</p>
+            <p>Rule 1: Fire &gt;= {parameters?.firePercentWarningThreshold ?? 20}% and Temp &gt;= {parameters?.temperatureWarningThreshold ?? 40}°C =&gt; Warning</p>
+            <p>Rule 2: Fire &gt;= {parameters?.firePercentCriticalThreshold ?? 50}% and Temp &gt;= {parameters?.temperatureCriticalThreshold ?? 60}°C =&gt; Critical</p>
             <p>Action: Warning/Critical =&gt; Valve Open</p>
           </div>
 

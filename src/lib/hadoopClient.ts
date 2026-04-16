@@ -1,7 +1,8 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { SensorLogEntry } from '@/types/system';
+import { SensorLogEntry, SensorParameters } from '@/types/system';
 import { notifyTelegram } from './telegramNotifier';
+import { getAdminSensorParameters } from './firebaseAdmin';
 
 const LOG_DIR = path.join(process.cwd(), 'logs');
 const FALLBACK_LOG_FILE = path.join(LOG_DIR, 'hadoop-sensor-log.jsonl');
@@ -175,9 +176,30 @@ export async function appendSensorLog(entry: SensorLogEntry) {
  
   // ── Kirim notifikasi Telegram (non-blocking, tidak gagalkan proses utama) ─
   try {
+    // Fetch parameters from Firestore
+    let parameters: SensorParameters = {
+      temperatureWarningThreshold: 40,
+      temperatureCriticalThreshold: 60,
+      firePercentWarningThreshold: 20,
+      firePercentCriticalThreshold: 50,
+      pressureThreshold: 5,
+      flowRateThreshold: 10,
+      waterLevelThreshold: 20,
+      waterLevelNotificationEnabled: true,
+    };
+
+    try {
+      const fetchedParams = await getAdminSensorParameters();
+      if (fetchedParams) {
+        parameters = fetchedParams as SensorParameters;
+      }
+    } catch (paramError) {
+      console.warn('[AppendSensorLog] Failed to fetch parameters from Firestore, using defaults:', paramError);
+    }
+
     // Ambil 20 entri terbaru untuk ringkasan (baca dari sumber yang tersedia)
     const recentEntries = await readSensorLogs(20).catch(() => [entry]);
-    await notifyTelegram(entry, recentEntries);
+    await notifyTelegram(entry, parameters, recentEntries);
   } catch (err) {
     console.error('[AppendSensorLog] Telegram notify error:', err);
   }

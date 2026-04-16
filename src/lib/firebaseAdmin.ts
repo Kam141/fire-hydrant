@@ -84,3 +84,35 @@ export async function updateAdminUserRole(uid: string, newRole: string) {
     throw error;
   }
 }
+
+/**
+ * Get sensor parameters from Firestore using admin SDK (server-side only)
+ */
+export async function getAdminSensorParameters() {
+  try {
+    const doc = await adminDb.collection('parameters').doc('sensors').get();
+    
+    if (!doc.exists) {
+      console.warn('Sensor parameters document does not exist');
+      return null;
+    }
+
+    const data = doc.data();
+    return {
+      id: doc.id,
+      temperatureWarningThreshold: data?.temperatureWarningThreshold || 40,
+      temperatureCriticalThreshold: data?.temperatureCriticalThreshold || 60,
+      firePercentWarningThreshold: data?.firePercentWarningThreshold || 20,
+      firePercentCriticalThreshold: data?.firePercentCriticalThreshold || 50,
+      pressureThreshold: data?.pressureThreshold || 5,
+      flowRateThreshold: data?.flowRateThreshold || 10,
+      waterLevelThreshold: data?.waterLevelThreshold || 20,
+      waterLevelNotificationEnabled: data?.waterLevelNotificationEnabled !== false,
+      updatedAt: data?.updatedAt?.toDate?.() || null,
+      updatedBy: data?.updatedBy || null,
+    };
+  } catch (error) {
+    console.error('Error fetching sensor parameters:', error);
+    throw error;
+  }
+}

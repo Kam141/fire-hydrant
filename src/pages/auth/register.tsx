@@ -17,6 +17,34 @@ export default function RegisterPage() {
   const [mode, setMode] = useState<Mode>("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
+  function parseFirebaseError(error: any): string {
+    const code = error?.code || '';
+    const message = error?.message || '';
+
+    // Log the error for debugging
+    console.error('Firebase Auth Error:', { code, message, error });
+
+    switch (code) {
+      case 'auth/email-already-in-use':
+        return 'Email sudah terdaftar. Gunakan email lain atau coba login.';
+      case 'auth/invalid-email':
+        return 'Format email tidak valid.';
+      case 'auth/weak-password':
+        return 'Password terlalu lemah. Gunakan minimal 6 karakter.';
+      case 'auth/operation-not-allowed':
+        return 'Registrasi dengan email dan password tidak diizinkan.';
+      case 'auth/network-request-failed':
+        return 'Gagal menghubungi server. Periksa koneksi internet Anda.';
+      case 'auth/too-many-requests':
+        return 'Terlalu banyak percobaan registrasi. Silakan coba lagi nanti.';
+      default:
+        if (message && message.includes('Firebase')) {
+          return 'Terjadi kesalahan saat mendaftar. Silakan coba lagi.';
+        }
+        return message || 'Terjadi kesalahan yang tidak diketahui.';
+    }
+  }
+
   async function handleRegister(e: FormEvent) {
     e.preventDefault();
 
@@ -26,12 +54,19 @@ export default function RegisterPage() {
       return;
     }
 
+    if (password.length < 6) {
+      setErrorMsg("Password minimal 6 karakter");
+      setMode("error");
+      return;
+    }
+
     setMode("loading");
     try {
       await registerWithEmail(email, password, name);
       router.replace("/dashboard");
-    } catch {
-      setErrorMsg("Terjadi kesalahan");
+    } catch (err: any) {
+      const errorMessage = parseFirebaseError(err);
+      setErrorMsg(errorMessage);
       setMode("error");
     }
   }

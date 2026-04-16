@@ -1,6 +1,6 @@
 import { appendSensorLog } from '@/lib/hadoopClient';
-// import { sendTelegramAlert } from '@/lib/telegram';
-import { AlertLevel, SystemState } from '@/types/system';
+import { getAdminSensorParameters } from '@/lib/firebaseAdmin';
+import { AlertLevel, SystemState, SensorParameters } from '@/types/system';
 
 const SENSOR_INTERVAL_MS = 5_000;
 const LOG_INTERVAL_MS = 60_000;
@@ -11,12 +11,23 @@ function randomStep(current: number, min: number, max: number, step = 2) {
   return Math.min(max, Math.max(min, next));
 }
 
-function resolveAlertLevel(temperatureC: number, firePercent: number): AlertLevel {
-  if (firePercent >= 100 && temperatureC >= 60) {
+async function resolveAlertLevel(
+  temperatureC: number,
+  firePercent: number,
+  parameters: SensorParameters
+): Promise<AlertLevel> {
+  const fireWarning = parameters.firePercentWarningThreshold || 20;
+  const fireCritical = parameters.firePercentCriticalThreshold || 50;
+  const tempWarning = parameters.temperatureWarningThreshold || 40;
+  const tempCritical = parameters.temperatureCriticalThreshold || 60;
+
+  // KEBAKARAN (CRITICAL): Fire >= Critical AND Temp >= Critical threshold
+  if (firePercent >= fireCritical && temperatureC >= tempCritical) {
     return 'KEBAKARAN';
   }
 
-  if (firePercent >= 70 && temperatureC >= 40) {
+  // POTENSI_KEBAKARAN (WARNING): Fire >= Warning AND Temp >= Warning threshold
+  if (firePercent >= fireWarning && temperatureC >= tempWarning) {
     return 'POTENSI_KEBAKARAN';
   }
 
@@ -28,7 +39,18 @@ class HydrantSystem {
   private started = false;
   private sensorTimer?: NodeJS.Timeout;
   private logTimer?: NodeJS.Timeout;
+  private paramTimer?: NodeJS.Timeout;
   private lastNotifiedLevel: AlertLevel = 'NORMAL';
+  private parameters: SensorParameters = {
+    temperatureWarningThreshold: 40,
+    temperatureCriticalThreshold: 60,
+    firePercentWarningThreshold: 20,
+    firePercentCriticalThreshold: 50,
+    pressureThreshold: 5,
+    flowRateThreshold: 10,
+    waterLevelThreshold: 20,
+    waterLevelNotificationEnabled: true,
+  };
 
   constructor() {
     this.state = {
@@ -53,6 +75,19 @@ class HydrantSystem {
     }
 
     this.started = true;
+
+    // Fetch parameters immediately on startup
+    this.refreshParameters().catch(err => {
+      console.error('Initial parameter fetch failed:', err);
+    });
+
+    // Refresh parameters every 30 seconds
+    this.paramTimer = setInterval(() => {
+      this.refreshParameters().catch(err => {
+        console.error('Parameter refresh failed:', err);
+      });
+    }, 30_000);
+
     this.sensorTimer = setInterval(() => {
       this.tickSensor().catch((error) => {
         console.error('Gagal update sensor:', error);
@@ -64,6 +99,18 @@ class HydrantSystem {
         console.error('Gagal kirim log ke Hadoop:', error);
       });
     }, LOG_INTERVAL_MS);
+  }
+
+  private async refreshParameters(): Promise<void> {
+    try {
+      const fetched = await getAdminSensorParameters();
+      if (fetched) {
+        this.parameters = fetched as SensorParameters;
+        console.log('[HydrantSystem] Parameters refreshed from Firestore (Admin SDK)');
+      }
+    } catch (error) {
+      console.error('[HydrantSystem] Failed to refresh parameters:', error);
+    }
   }
 
   getState() {
@@ -105,7 +152,11 @@ class HydrantSystem {
       sensor.temperatureC = Math.min(80, sensor.temperatureC + 8);
     }
 
-    this.state.alertLevel = resolveAlertLevel(sensor.temperatureC, sensor.firePercent);
+    this.state.alertLevel = await resolveAlertLevel(
+      sensor.temperatureC,
+      sensor.firePercent,
+      this.parameters
+    );
 
     if (this.state.controlMode === 'AUTO') {
       this.applyAutoValveRule();
@@ -136,7 +187,7 @@ class HydrantSystem {
       return;
     }
 
-    // await sendTelegramAlert(this.state.alertLevel, this.state.sensor);
+    // Notification is triggered via appendSensorLog in writeLog()
     this.lastNotifiedLevel = this.state.alertLevel;
   }
 

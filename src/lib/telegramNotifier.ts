@@ -1,10 +1,12 @@
-import { SensorLogEntry } from '@/types/system';
+import { SensorLogEntry, SensorParameters } from '@/types/system';
 
 const TELEGRAM_API = 'https://api.telegram.org';
 
-// ── Cooldown alert darurat: minimal 2 menit antar alert (hindari spam) ──
-let lastAlertSentAt = 0;
-const ALERT_COOLDOWN_MS = 2 * 60 * 1000;
+// ── Cooldown tracking with different levels ──
+let lastCriticalAlertSentAt = 0;
+let lastWarningAlertSentAt = 0;
+const CRITICAL_COOLDOWN_MS = 5 * 1000; // 5 seconds for critical
+const WARNING_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes for warning
 
 // ── Interval rutin: track kapan terakhir ringkasan 10 menit dikirim ──
 let lastSummarySentAt = 0;
@@ -17,8 +19,29 @@ function getBotConfig(): { token: string; chatId: string } | null {
   return { token, chatId };
 }
 
-function isEmergency(entry: SensorLogEntry): boolean {
-  return entry.firePercent > 80 || entry.temperatureC > 50;
+/**
+ * Determine alert level based on sensor values and parameters
+ */
+function determineAlertLevel(
+  entry: SensorLogEntry,
+  parameters: SensorParameters
+): 'NORMAL' | 'POTENSI_KEBAKARAN' | 'KEBAKARAN' {
+  const fireWarning = parameters.firePercentWarningThreshold || 20;
+  const fireCritical = parameters.firePercentCriticalThreshold || 50;
+  const tempWarning = parameters.temperatureWarningThreshold || 40;
+  const tempCritical = parameters.temperatureCriticalThreshold || 60;
+
+  // KEBAKARAN (CRITICAL): Fire >= Critical AND Temp >= Critical threshold
+  if (entry.firePercent >= fireCritical && entry.temperatureC >= tempCritical) {
+    return 'KEBAKARAN';
+  }
+
+  // POTENSI_KEBAKARAN (WARNING): Fire >= Warning AND Temp >= Warning threshold
+  if (entry.firePercent >= fireWarning && entry.temperatureC >= tempWarning) {
+    return 'POTENSI_KEBAKARAN';
+  }
+
+  return 'NORMAL';
 }
 
 function formatTimestamp(iso: string): string {
@@ -35,7 +58,9 @@ function formatTimestamp(iso: string): string {
 
 function alertLevelEmoji(level: string): string {
   switch (level?.toLowerCase()) {
+    case 'kebakaran':
     case 'critical': return '🔴';
+    case 'potensi_kebakaran':
     case 'warning':  return '🟡';
     case 'normal':   return '🟢';
     default:         return '⚪';
@@ -43,13 +68,28 @@ function alertLevelEmoji(level: string): string {
 }
 
 /** Buat pesan alert darurat (satu entri sensor) */
-function buildAlertMessage(entry: SensorLogEntry): string {
+function buildAlertMessage(entry: SensorLogEntry, parameters: SensorParameters): string {
   const reasons: string[] = [];
-  if (entry.firePercent > 80)   reasons.push(`🔥 Api *${entry.firePercent.toFixed(1)}%* (>80%)`);
-  if (entry.temperatureC > 50)  reasons.push(`🌡️ Suhu *${entry.temperatureC.toFixed(1)}°C* (>50°C)`);
+  const tempCritical = parameters.temperatureCriticalThreshold || 60;
+  const tempWarning = parameters.temperatureWarningThreshold || 40;
+  const fireWarning = parameters.firePercentWarningThreshold || 20;
+  const fireCritical = parameters.firePercentCriticalThreshold || 50;
+
+  if (entry.firePercent >= (entry.alertLevel === 'KEBAKARAN' ? fireCritical : fireWarning)) {
+    reasons.push(`🔥 Api *${entry.firePercent.toFixed(1)}%* (threshold: ${entry.alertLevel === 'KEBAKARAN' ? fireCritical : fireWarning}%)`);
+  }
+  if (entry.temperatureC >= tempCritical) {
+    reasons.push(`🌡️ Suhu *${entry.temperatureC.toFixed(1)}°C* (kritical: ${tempCritical}°C)`);
+  } else if (entry.temperatureC >= tempWarning) {
+    reasons.push(`🌡️ Suhu *${entry.temperatureC.toFixed(1)}°C* (warning: ${tempWarning}°C)`);
+  }
+
+  const levelLabel = entry.alertLevel === 'KEBAKARAN' ? '🔴 KEBAKARAN AKTIF' : '🟡 POTENSI KEBAKARAN';
 
   return [
     `🚨 *ALERT HIDRAN OTOMATIS*`,
+    ``,
+    `${levelLabel}`,
     ``,
     `⚠️ *Kondisi Bahaya Terdeteksi:*`,
     ...reasons.map(r => `  • ${r}`),
@@ -61,7 +101,6 @@ function buildAlertMessage(entry: SensorLogEntry): string {
     `  • Tekanan     : ${entry.pressureBar.toFixed(2)} bar`,
     `  • Flow Rate   : ${entry.flowRateLpm.toFixed(0)} L/min`,
     `  • Valve       : ${entry.valveOpen ? '🔓 OPEN' : '🔒 CLOSED'}`,
-    `  • Status      : ${alertLevelEmoji(entry.alertLevel)} ${entry.alertLevel?.toUpperCase() ?? '-'}`,
     ``,
     `_Sistem Monitoring Hidran Otomatis_`,
   ].join('\n');
@@ -86,7 +125,7 @@ function buildSummaryMessage(entries: SensorLogEntry[]): string {
   const hasAlert  = entries.some(e => e.alertLevel?.toLowerCase() !== 'normal');
 
   const rows = entries.slice(0, 5).map((e, i) =>
-    `  ${i + 1}\\. ${formatTimestamp(e.timestamp)} | Api: ${e.firePercent.toFixed(1)}% | Suhu: ${e.temperatureC.toFixed(1)}°C | ${alertLevelEmoji(e.alertLevel)} ${e.alertLevel?.toUpperCase()}`
+    `  ${i + 1}. ${formatTimestamp(e.timestamp)} | Api: ${e.firePercent.toFixed(1)}% | Suhu: ${e.temperatureC.toFixed(1)}°C | ${alertLevelEmoji(e.alertLevel)} ${e.alertLevel?.toUpperCase()}`
   );
 
   return [
@@ -151,33 +190,45 @@ async function sendTelegramMessage(text: string): Promise<void> {
 /**
  * Dipanggil setiap kali ada log baru masuk (dari appendSensorLog).
  * Menangani dua skenario:
- *   1. Alert darurat jika firePercent > 80 atau temperatureC > 50
+ *   1. Alert darurat jika kondisi mencapai WARNING atau CRITICAL
  *   2. Ringkasan rutin jika sudah 10 menit sejak ringkasan terakhir
  */
 export async function notifyTelegram(
   entry: SensorLogEntry,
+  parameters: SensorParameters,
   recentEntries: SensorLogEntry[] = []
 ): Promise<void> {
   const now = Date.now();
 
-  // ── 1. Alert darurat ────────────────────────────────────────────────────
-  if (isEmergency(entry)) {
-    const cooldownOk = now - lastAlertSentAt > ALERT_COOLDOWN_MS;
+  // ── 1. Tentukan alert level berdasarkan parameters ──
+  const alertLevel = determineAlertLevel(entry, parameters);
+
+  // ── 2. Alert dengan cooldown dinamis ────────────────────────────────────
+  if (alertLevel !== 'NORMAL') {
+    const isCritical = alertLevel === 'KEBAKARAN';
+    const cooldownMs = isCritical ? CRITICAL_COOLDOWN_MS : WARNING_COOLDOWN_MS;
+    const lastSentTime = isCritical ? lastCriticalAlertSentAt : lastWarningAlertSentAt;
+
+    const cooldownOk = now - lastSentTime > cooldownMs;
     if (cooldownOk) {
-      console.log('[Telegram] Kondisi darurat terdeteksi, mengirim alert...');
+      console.log(`[Telegram] Alert level ${alertLevel} terdeteksi, mengirim notifikasi...`);
       try {
-        await sendTelegramMessage(buildAlertMessage(entry));
-        lastAlertSentAt = now;
+        await sendTelegramMessage(buildAlertMessage(entry, parameters));
+        if (isCritical) {
+          lastCriticalAlertSentAt = now;
+        } else {
+          lastWarningAlertSentAt = now;
+        }
       } catch (err) {
         console.error('[Telegram] Gagal kirim alert:', err);
       }
     } else {
-      const remaining = Math.ceil((ALERT_COOLDOWN_MS - (now - lastAlertSentAt)) / 1000);
-      console.log(`[Telegram] Alert cooldown aktif, skip (${remaining}s tersisa)`);
+      const remaining = Math.ceil((cooldownMs - (now - lastSentTime)) / 1000);
+      console.log(`[Telegram] Alert cooldown aktif (${remaining}s tersisa)`);
     }
   }
 
-  // ── 2. Ringkasan rutin 10 menit ─────────────────────────────────────────
+  // ── 3. Ringkasan rutin 10 menit ─────────────────────────────────────────
   const summaryDue = now - lastSummarySentAt > SUMMARY_INTERVAL_MS;
   if (summaryDue) {
     console.log('[Telegram] Interval 10 menit tercapai, mengirim ringkasan...');
@@ -197,7 +248,8 @@ export async function sendTelegramTest(): Promise<void> {
     ``,
     `Bot Telegram terhubung ke sistem monitoring hidran.`,
     `Notifikasi akan dikirim:`,
-    `  • 🚨 *Alert darurat* saat Api >80% atau Suhu >50°C`,
+    `  • 🟡 *Alert WARNING* dengan cooldown 2 menit`,
+    `  • 🔴 *Alert CRITICAL* dengan cooldown 5 detik`,
     `  • 📋 *Ringkasan rutin* setiap 10 menit`,
     ``,
     `_${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}_`,

@@ -5,7 +5,7 @@ import LinePanel from '@/components/ui/line-panel';
 import MetricBox from '@/components/ui/metric-box';
 import StatusPill from '@/components/ui/status-pill';
 import styles from '@/styles/Dashboard.module.css';
-import { SystemState } from '@/types/system';
+import { SystemState, SensorParameters } from '@/types/system';
 import { withAuth } from '@/components/hoc/withAuth';
 
 const firePath = 'M0 68 C48 74, 88 26, 146 52 C186 72, 218 72, 255 62 C293 52, 328 108, 368 100 C410 90, 432 54, 480 44';
@@ -13,18 +13,57 @@ const tempPath = 'M0 40 C34 46, 82 62, 126 88 C166 120, 206 130, 248 82 C286 46,
 
 function DashboardPage() {
   const [state, setState] = useState<SystemState | null>(null);
+  const [parameters, setParameters] = useState<SensorParameters | null>(null);
+  const [dataSource, setDataSource] = useState<'hadoop-logs' | 'system-state'>('system-state');
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
   useEffect(() => {
     const load = async () => {
-      const response = await fetch('/api/status');
-      const payload = await response.json();
-      if (payload.ok) setState(payload.data as SystemState);
+      try {
+        // Fetch status (real-time data from Hadoop)
+        const statusResponse = await fetch('/api/status');
+        const statusPayload = await statusResponse.json();
+        if (statusPayload.ok) {
+          setState(statusPayload.data as SystemState);
+          setDataSource(statusPayload.source || 'system-state');
+          setLastUpdate(new Date());
+        }
+
+        // Fetch parameters for insight display
+        const paramsResponse = await fetch('/api/parameters');
+        const paramsPayload = await paramsResponse.json();
+        if (paramsPayload.success) {
+          setParameters(paramsPayload.data as SensorParameters);
+        }
+      } catch (err) {
+        console.error('Failed to fetch status:', err);
+      }
     };
 
     load();
     const timer = setInterval(load, 2000);
     return () => clearInterval(timer);
   }, []);
+
+  const getDataSourceLabel = () => {
+    if (dataSource === 'hadoop-logs') {
+      return '🟢 Live Hadoop Logs';
+    }
+    return '🟡 System State (Fallback)';
+  };
+
+  const getIncidentInsight = () => {
+    if (!parameters) {
+      return 'Ketika fire sensor melewati 70% dan suhu di atas 40C, sistem akan masuk warning mode dan valve auto dibuka.';
+    }
+
+    const fireWarning = parameters.firePercentWarningThreshold || 20;
+    const fireCritical = parameters.firePercentCriticalThreshold || 50;
+    const tempWarning = parameters.temperatureWarningThreshold || 40;
+    const tempCritical = parameters.temperatureCriticalThreshold || 60;
+
+    return `Konfigurasi Threshold Terkini:\n• WARNING: Api ≥ ${fireWarning}% dan Suhu ≥ ${tempWarning}°C\n• CRITICAL: Api ≥ ${fireCritical}% dan Suhu ≥ ${tempCritical}°C\n\nKetika threshold terpenuhi, valve otomatis membuka untuk mitigasi kebakaran.`;
+  };
 
   return (
     <>
@@ -34,8 +73,8 @@ function DashboardPage() {
 
       <DashboardFrame title="DASHBOARD (HALAMAN UTAMA)" active="dashboard">
         <section className={styles.kpiStrip}>
-          <MetricBox label="Fire Percentage" value={`${state?.sensor.firePercent.toFixed(0) ?? '-'}%`} sub="2s update" />
-          <MetricBox label="Temperature" value={`${state?.sensor.temperatureC.toFixed(1) ?? '-'}C`} sub="Live sensor" />
+          <MetricBox label="Fire Percentage" value={`${state?.sensor.firePercent.toFixed(0) ?? '-'}%`} sub="Real-time sensor" />
+          <MetricBox label="Temperature" value={`${state?.sensor.temperatureC.toFixed(1) ?? '-'}°C`} sub="Live reading" />
           <MetricBox label="Pressure" value={`${state?.sensor.pressureBar.toFixed(2) ?? '-'} bar`} sub="Hydrant line" />
           <MetricBox label="System Status" value={<StatusPill level={state?.alertLevel} />} sub={state?.controlMode ?? '-'} />
         </section>
@@ -43,7 +82,7 @@ function DashboardPage() {
         <section className={styles.contentGrid}>
           <div className={styles.mainPanel}>
             <LinePanel title="Fire Sensor Trend" subtitle="Fire intensity (%)" path={firePath} />
-            <LinePanel title="Temperature Trend" subtitle="Temperature (C)" path={tempPath} />
+            <LinePanel title="Temperature Trend" subtitle="Temperature (°C)" path={tempPath} />
 
             <div className={styles.bottomPair}>
               <article className={styles.smallTile}>
@@ -58,6 +97,15 @@ function DashboardPage() {
                 <span>{state?.lastAction ?? '-'}</span>
               </article>
             </div>
+
+            <div className={styles.dataSourceIndicator}>
+              <small>{getDataSourceLabel()}</small>
+              {lastUpdate && (
+                <small style={{ marginLeft: '10px', color: '#666' }}>
+                  Last: {lastUpdate.toLocaleTimeString('id-ID')}
+                </small>
+              )}
+            </div>
           </div>
 
           <aside className={styles.sidePanel}>
@@ -65,9 +113,8 @@ function DashboardPage() {
             <MetricBox label="Flow Rate" value={`${state?.sensor.flowRateLpm.toFixed(0) ?? '-'} L/min`} sub="Valve throughput" />
             <div className={styles.insightCard}>
               <p className={styles.insightTitle}>Incident Insight</p>
-              <p>
-                Ketika fire sensor melewati 70% dan suhu di atas 40C, sistem akan masuk warning mode dan
-                valve auto dibuka.
+              <p style={{ whiteSpace: 'pre-wrap', fontSize: '0.85em', lineHeight: '1.5' }}>
+                {getIncidentInsight()}
               </p>
             </div>
           </aside>

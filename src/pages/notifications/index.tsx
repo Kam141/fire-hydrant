@@ -47,6 +47,19 @@ export default function NotificationPage() {
             <p>Level Critical =&gt; Kirim notifikasi kebakaran aktif</p>
           </div>
         </section>
+
+        <section className={styles.panelCard}>
+          <h2>Water Level Alert</h2>
+          <p>
+            Sistem akan mengirim notifikasi Telegram jika tingkat air turun di bawah ambang batas yang telah ditentukan.
+          </p>
+
+          <div className={styles.ruleBox}>
+            <p>Current Water Level: <strong>{state?.sensor.waterLevelPercent.toFixed(1) ?? '-'}%</strong></p>
+            <p>Status: {state?.sensor.waterLevelPercent && state.sensor.waterLevelPercent < 20 ? '⚠️ LOW' : '✓ Normal'}</p>
+            <p>Notifikasi dikirim maksimal setiap 15 menit untuk menghindari spam</p>
+          </div>
+        </section>
       </DashboardFrame>
     </>
   );

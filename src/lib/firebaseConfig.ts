@@ -192,8 +192,10 @@ export async function getSensorParameters(): Promise<SensorParameters | null> {
     const data = snap.data();
     return {
       id: snap.id,
-      temperatureThreshold: data.temperatureThreshold || 60,
-      firePercentThreshold: data.firePercentThreshold || 30,
+      temperatureWarningThreshold: data.temperatureWarningThreshold || 40,
+      temperatureCriticalThreshold: data.temperatureCriticalThreshold || 60,
+      firePercentWarningThreshold: data.firePercentWarningThreshold || 20,
+      firePercentCriticalThreshold: data.firePercentCriticalThreshold || 50,
       pressureThreshold: data.pressureThreshold || 5,
       flowRateThreshold: data.flowRateThreshold || 10,
       waterLevelThreshold: data.waterLevelThreshold || 20,
@@ -205,6 +207,7 @@ export async function getSensorParameters(): Promise<SensorParameters | null> {
     throw error;
   }
 }
+
 
 /**
  * Update sensor parameters

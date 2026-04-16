@@ -9,11 +9,14 @@ import styles from './parameters.module.css';
 function ParametersPage() {
   const { user } = useAuth();
   const [parameters, setParameters] = useState<SensorParameters>({
-    temperatureThreshold: 60,
-    firePercentThreshold: 30,
+    temperatureWarningThreshold: 40,
+    temperatureCriticalThreshold: 60,
+    firePercentWarningThreshold: 20,
+    firePercentCriticalThreshold: 50,
     pressureThreshold: 5,
     flowRateThreshold: 10,
     waterLevelThreshold: 20,
+    waterLevelNotificationEnabled: true,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -136,8 +139,8 @@ function ParametersPage() {
               atau mengambil tindakan. Silakan sesuaikan nilai-nilai ini berdasarkan kebutuhan lokasi Anda.
             </p>
             <ul>
-              <li><strong>Suhu:</strong> Aktivator manual jika melebihi ambang batas</li>
-              <li><strong>Indikasi Api:</strong> Memicu alert jika terdeteksi</li>
+              <li><strong>Suhu:</strong> Warning dan Critical untuk pemicu alarm manual</li>
+              <li><strong>Indikasi Api:</strong> Warning dan Critical untuk mendeteksi kemungkinan kebakaran</li>
               <li><strong>Tekanan:</strong> Minimum untuk operasi sistem</li>
               <li><strong>Laju Aliran:</strong> Minimum untuk membuka katup</li>
               <li><strong>Tingkat Air:</strong> Peringatan jika air menjadi rendah</li>
@@ -149,44 +152,84 @@ function ParametersPage() {
               <p className={styles['form-description']}>Atur nilai ambang batas untuk semua sensor sistem</p>
             </div>
             <div className={styles['form-grid']}>
-              {/* Temperature Threshold */}
+              {/* Temperature Warning Threshold */}
               <div className={styles['form-group']}>
-                <label htmlFor="temperature">Ambang Batas Suhu (°C)</label>
+                <label htmlFor="tempWarning">Ambang Batas Suhu - Peringatan (°C)</label>
                 <div className={styles['input-wrapper']}>
                   <input
-                    id="temperature"
+                    id="tempWarning"
                     type="number"
                     min="0"
                     max="150"
                     step="1"
-                    value={parameters.temperatureThreshold}
-                    onChange={(e) => handleInputChange('temperatureThreshold', parseFloat(e.target.value))}
+                    value={parameters.temperatureWarningThreshold}
+                    onChange={(e) => handleInputChange('temperatureWarningThreshold', parseFloat(e.target.value))}
                     disabled={saving}
                     className={styles.input}
                   />
                   <span className={styles.unit}>°C</span>
                 </div>
-                <p className={styles.help}>Suhu maksimum yang diperbolehkan</p>
+                <p className={styles.help}>Suhu pemicu level WARNING</p>
               </div>
 
-              {/* Fire Percent Threshold */}
+              {/* Temperature Critical Threshold */}
               <div className={styles['form-group']}>
-                <label htmlFor="firePercent">Ambang Batas Api (%)</label>
+                <label htmlFor="tempCritical">Ambang Batas Suhu - Kritis (°C)</label>
                 <div className={styles['input-wrapper']}>
                   <input
-                    id="firePercent"
+                    id="tempCritical"
+                    type="number"
+                    min="0"
+                    max="150"
+                    step="1"
+                    value={parameters.temperatureCriticalThreshold}
+                    onChange={(e) => handleInputChange('temperatureCriticalThreshold', parseFloat(e.target.value))}
+                    disabled={saving}
+                    className={styles.input}
+                  />
+                  <span className={styles.unit}>°C</span>
+                </div>
+                <p className={styles.help}>Suhu pemicu level CRITICAL</p>
+              </div>
+
+              {/* Fire Percent Warning Threshold */}
+              <div className={styles['form-group']}>
+                <label htmlFor="fireWarning">Ambang Batas Api - Peringatan (%)</label>
+                <div className={styles['input-wrapper']}>
+                  <input
+                    id="fireWarning"
                     type="number"
                     min="0"
                     max="100"
                     step="1"
-                    value={parameters.firePercentThreshold}
-                    onChange={(e) => handleInputChange('firePercentThreshold', parseFloat(e.target.value))}
+                    value={parameters.firePercentWarningThreshold}
+                    onChange={(e) => handleInputChange('firePercentWarningThreshold', parseFloat(e.target.value))}
                     disabled={saving}
                     className={styles.input}
                   />
                   <span className={styles.unit}>%</span>
                 </div>
-                <p className={styles.help}>Persentase indikasi api maksimum</p>
+                <p className={styles.help}>Persentase api pemicu level WARNING</p>
+              </div>
+
+              {/* Fire Percent Critical Threshold */}
+              <div className={styles['form-group']}>
+                <label htmlFor="fireCritical">Ambang Batas Api - Kritis (%)</label>
+                <div className={styles['input-wrapper']}>
+                  <input
+                    id="fireCritical"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={parameters.firePercentCriticalThreshold}
+                    onChange={(e) => handleInputChange('firePercentCriticalThreshold', parseFloat(e.target.value))}
+                    disabled={saving}
+                    className={styles.input}
+                  />
+                  <span className={styles.unit}>%</span>
+                </div>
+                <p className={styles.help}>Persentase api pemicu level CRITICAL</p>
               </div>
 
               {/* Pressure Threshold */}
@@ -248,6 +291,24 @@ function ParametersPage() {
                 </div>
                 <p className={styles.help}>Tingkat air minimum dalam tangki</p>
               </div>
+            </div>
+
+            {/* Water Level Notification Toggle */}
+            <div className={styles['checkbox-group']}>
+              <label htmlFor="waterLevelNotif" className={styles['checkbox-label']}>
+                <input
+                  id="waterLevelNotif"
+                  type="checkbox"
+                  checked={parameters.waterLevelNotificationEnabled !== false}
+                  onChange={(e) => handleInputChange('waterLevelNotificationEnabled', e.target.checked)}
+                  disabled={saving}
+                  className={styles.checkbox}
+                />
+                <span>Aktifkan notifikasi saat tingkat air di bawah ambang batas</span>
+              </label>
+              <p className={styles['checkbox-help']}>
+                Ketika diaktifkan, sistem akan mengirim notifikasi Telegram jika tingkat air turun di bawah {parameters.waterLevelThreshold}%.
+              </p>
             </div>
 
             <div className={styles['button-group']}>

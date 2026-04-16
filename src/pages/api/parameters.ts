@@ -13,11 +13,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const doc = await adminDb.collection('parameters').doc('sensors').get();
 
       let parameters: any = {
-        temperatureThreshold: 60,
-        firePercentThreshold: 30,
+        temperatureWarningThreshold: 40,
+        temperatureCriticalThreshold: 60,
+        firePercentWarningThreshold: 70,
+        firePercentCriticalThreshold: 100,
         pressureThreshold: 5,
         flowRateThreshold: 10,
         waterLevelThreshold: 20,
+        waterLevelNotificationEnabled: true,
       };
 
       if (doc.exists) {
@@ -72,17 +75,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       const {
-        temperatureThreshold,
-        firePercentThreshold,
+        temperatureWarningThreshold,
+        temperatureCriticalThreshold,
+        firePercentWarningThreshold,
+        firePercentCriticalThreshold,
         pressureThreshold,
         flowRateThreshold,
         waterLevelThreshold,
+        waterLevelNotificationEnabled,
       } = req.body;
 
       // Validate inputs
       if (
-        temperatureThreshold === undefined ||
-        firePercentThreshold === undefined ||
+        temperatureWarningThreshold === undefined ||
+        temperatureCriticalThreshold === undefined ||
+        firePercentWarningThreshold === undefined ||
+        firePercentCriticalThreshold === undefined ||
         pressureThreshold === undefined ||
         flowRateThreshold === undefined ||
         waterLevelThreshold === undefined
@@ -95,10 +103,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // Validate ranges
       if (
-        temperatureThreshold < 0 ||
-        temperatureThreshold > 150 ||
-        firePercentThreshold < 0 ||
-        firePercentThreshold > 100 ||
+        temperatureWarningThreshold < 0 ||
+        temperatureWarningThreshold > 150 ||
+        temperatureCriticalThreshold < 0 ||
+        temperatureCriticalThreshold > 150 ||
+        temperatureWarningThreshold >= temperatureCriticalThreshold
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: 'Temperature thresholds invalid. Warning must be less than Critical.',
+        });
+      }
+
+      if (
+        firePercentWarningThreshold < 0 ||
+        firePercentWarningThreshold > 100 ||
+        firePercentCriticalThreshold < 0 ||
+        firePercentCriticalThreshold > 100 ||
+        firePercentWarningThreshold >= firePercentCriticalThreshold
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: 'Fire thresholds invalid. Warning must be less than Critical.',
+        });
+      }
+
+      if (
         pressureThreshold < 0 ||
         pressureThreshold > 50 ||
         flowRateThreshold < 0 ||
@@ -114,20 +144,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       try {
         console.log('Updating sensor parameters...', {
-          temperatureThreshold,
-          firePercentThreshold,
+          temperatureWarningThreshold,
+          temperatureCriticalThreshold,
+          firePercentWarningThreshold,
+          firePercentCriticalThreshold,
           pressureThreshold,
           flowRateThreshold,
           waterLevelThreshold,
+          waterLevelNotificationEnabled,
         });
 
         await adminDb.collection('parameters').doc('sensors').set(
           {
-            temperatureThreshold,
-            firePercentThreshold,
+            temperatureWarningThreshold,
+            temperatureCriticalThreshold,
+            firePercentWarningThreshold,
+            firePercentCriticalThreshold,
             pressureThreshold,
             flowRateThreshold,
             waterLevelThreshold,
+            waterLevelNotificationEnabled: waterLevelNotificationEnabled !== false,
             updatedAt: new Date(),
             updatedBy: userId,
           },
@@ -140,11 +176,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           success: true,
           message: 'Parameter berhasil diperbarui',
           data: {
-            temperatureThreshold,
-            firePercentThreshold,
+            temperatureWarningThreshold,
+            temperatureCriticalThreshold,
+            firePercentWarningThreshold,
+            firePercentCriticalThreshold,
             pressureThreshold,
             flowRateThreshold,
             waterLevelThreshold,
+            waterLevelNotificationEnabled,
             updatedAt: new Date(),
             updatedBy: userId,
           },

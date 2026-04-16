@@ -37,11 +37,14 @@ export interface SensorLogEntry extends SensorSnapshot {
 
 export interface SensorParameters {
   id?: string;
-  temperatureThreshold: number;
-  firePercentThreshold: number;
+  temperatureWarningThreshold: number;
+  temperatureCriticalThreshold: number;
+  firePercentWarningThreshold: number;
+  firePercentCriticalThreshold: number;
   pressureThreshold: number;
   flowRateThreshold: number;
   waterLevelThreshold: number;
+  waterLevelNotificationEnabled?: boolean;
   updatedAt?: Date | null;
   updatedBy?: string;
 }

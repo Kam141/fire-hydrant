@@ -15,13 +15,36 @@ export default function LoginPage() {
   const [mode, setMode] = useState<AuthMode>("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
-  function parseFirebaseError(code: string): string {
+  function parseFirebaseError(error: any): string {
+    const code = error?.code || '';
+    const message = error?.message || '';
+
+    // Log the error for debugging
+    console.error('Firebase Auth Error:', { code, message, error });
+
     switch (code) {
-      case "auth/user-not-found":
-      case "auth/wrong-password":
-        return "Email atau password salah.";
+      case 'auth/user-not-found':
+        return 'Email tidak terdaftar. Silakan daftar terlebih dahulu.';
+      case 'auth/wrong-password':
+        return 'Password salah. Silakan coba lagi.';
+      case 'auth/invalid-email':
+        return 'Format email tidak valid.';
+      case 'auth/user-disabled':
+        return 'Akun ini telah dinonaktifkan.';
+      case 'auth/too-many-requests':
+        return 'Terlalu banyak percobaan login yang gagal. Silakan coba lagi nanti.';
+      case 'auth/invalid-credential':
+        return 'Email atau password salah.';
+      case 'auth/operation-not-allowed':
+        return 'Login dengan email dan password tidak diizinkan.';
+      case 'auth/network-request-failed':
+        return 'Gagal menghubungi server. Periksa koneksi internet Anda.';
       default:
-        return "Terjadi kesalahan.";
+        // If we have a message but no matching code, show it
+        if (message && message.includes('Firebase')) {
+          return 'Terjadi kesalahan saat login. Silakan coba lagi.';
+        }
+        return message || 'Terjadi kesalahan yang tidak diketahui.';
     }
   }
 
@@ -32,7 +55,8 @@ export default function LoginPage() {
       await loginWithEmail(email, password);
       router.replace("/dashboard");
     } catch (err: any) {
-      setErrorMsg(parseFirebaseError(err.code));
+      const errorMessage = parseFirebaseError(err);
+      setErrorMsg(errorMessage);
       setMode("error");
     }
   }
@@ -43,7 +67,8 @@ export default function LoginPage() {
       await loginWithGoogle();
       router.replace("/dashboard");
     } catch (err: any) {
-      setErrorMsg(parseFirebaseError(err.code));
+      const errorMessage = parseFirebaseError(err);
+      setErrorMsg(errorMessage);
       setMode("error");
     }
   }

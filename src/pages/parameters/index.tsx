@@ -57,11 +57,11 @@ function ParametersPage() {
     }
   };
 
-  const handleInputChange = (field: keyof SensorParameters, value: number) => {
-    setParameters({
-      ...parameters,
+  const handleInputChange = <K extends keyof SensorParameters>(field: K, value: SensorParameters[K]) => {
+    setParameters(prev => ({
+      ...prev,
       [field]: value,
-    });
+    }));
   };
 
   const handleSave = async () => {

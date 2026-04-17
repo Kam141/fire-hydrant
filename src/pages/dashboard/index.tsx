@@ -5,14 +5,12 @@ import LinePanel from '@/components/ui/line-panel';
 import MetricBox from '@/components/ui/metric-box';
 import StatusPill from '@/components/ui/status-pill';
 import styles from '@/styles/Dashboard.module.css';
-import { SystemState, SensorParameters } from '@/types/system';
+import { SystemState, SensorLogEntry, SensorParameters } from '@/types/system';
 import { withAuth } from '@/components/hoc/withAuth';
-
-const firePath = 'M0 68 C48 74, 88 26, 146 52 C186 72, 218 72, 255 62 C293 52, 328 108, 368 100 C410 90, 432 54, 480 44';
-const tempPath = 'M0 40 C34 46, 82 62, 126 88 C166 120, 206 130, 248 82 C286 46, 332 80, 374 86 C416 90, 440 50, 480 62';
 
 function DashboardPage() {
   const [state, setState] = useState<SystemState | null>(null);
+  const [logs, setLogs] = useState<SensorLogEntry[]>([]);
   const [parameters, setParameters] = useState<SensorParameters | null>(null);
   const [dataSource, setDataSource] = useState<'hadoop-logs' | 'system-state'>('system-state');
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
@@ -27,6 +25,13 @@ function DashboardPage() {
           setState(statusPayload.data as SystemState);
           setDataSource(statusPayload.source || 'system-state');
           setLastUpdate(new Date());
+        }
+
+        // Fetch trend data from persisted Hadoop logs
+        const logsResponse = await fetch('/api/logs?limit=24');
+        const logsPayload = await logsResponse.json();
+        if (logsPayload.ok && Array.isArray(logsPayload.data)) {
+          setLogs(logsPayload.data as SensorLogEntry[]);
         }
 
         // Fetch parameters for insight display
@@ -65,6 +70,11 @@ function DashboardPage() {
     return `Konfigurasi Threshold Terkini:\n• WARNING: Api ≥ ${fireWarning}% dan Suhu ≥ ${tempWarning}°C\n• CRITICAL: Api ≥ ${fireCritical}% dan Suhu ≥ ${tempCritical}°C\n\nKetika threshold terpenuhi, valve otomatis membuka untuk mitigasi kebakaran.`;
   };
 
+  const chartLogs = [...logs].reverse();
+  const chartTimestamps = chartLogs.map((entry) => entry.timestamp);
+  const fireSeries = chartLogs.map((entry) => entry.firePercent);
+  const tempSeries = chartLogs.map((entry) => entry.temperatureC);
+
   return (
     <>
       <Head>
@@ -81,8 +91,18 @@ function DashboardPage() {
 
         <section className={styles.contentGrid}>
           <div className={styles.mainPanel}>
-            <LinePanel title="Fire Sensor Trend" subtitle="Fire intensity (%)" path={firePath} />
-            <LinePanel title="Temperature Trend" subtitle="Temperature (°C)" path={tempPath} />
+            <LinePanel
+              title="Fire Sensor Trend"
+              subtitle="Fire intensity (%)"
+              values={fireSeries}
+              timestamps={chartTimestamps}
+            />
+            <LinePanel
+              title="Temperature Trend"
+              subtitle="Temperature (°C)"
+              values={tempSeries}
+              timestamps={chartTimestamps}
+            />
 
             <div className={styles.bottomPair}>
               <article className={styles.smallTile}>
@@ -125,3 +145,4 @@ function DashboardPage() {
 }
 
 export default withAuth(DashboardPage);
+

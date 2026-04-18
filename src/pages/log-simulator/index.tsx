@@ -47,7 +47,7 @@ export default function LogSimulator() {
       [name]:
         type === 'checkbox'
           ? (e.target as HTMLInputElement).checked
-          : type === 'number'
+          : type === 'number' || type === 'range'
             ? parseFloat(value)
             : value,
     }));

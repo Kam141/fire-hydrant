@@ -1,32 +1,34 @@
+// src/lib/firebaseAdmin.ts
+// Server-side Firebase Admin SDK — credentials loaded from FIREBASE_ADMIN_SDK_JSON env var
+// Never import this file in client-side code (pages/components) — server/API routes only
+
 import * as admin from 'firebase-admin';
 
-/**
- * Server-side Firebase Admin SDK initialization
- * This is used for secure server-to-server operations that bypass Firestore security rules
- * 
- * Setup:
- * 1. Go to Firebase Console → Project Settings → Service Accounts
- * 2. Click "Generate New Private Key"
- * 3. Save the JSON file as `firebase-admin-key.json` in the project root
- * 4. Add to .env.local:
- *    FIREBASE_ADMIN_UID="<uid-from-json>"
- * 5. Add firebase-admin package: npm install firebase-admin
- */
-
-// Check if already initialized
 if (!admin.apps.length) {
+  const rawJson = process.env.FIREBASE_ADMIN_SDK_JSON;
+
+  if (!rawJson) {
+    throw new Error(
+      'FIREBASE_ADMIN_SDK_JSON is not set. ' +
+      'Add the service account JSON (single-line) to .env.local or Vercel environment variables.'
+    );
+  }
+
   try {
-    // Try to initialize with default credentials (works in Firebase Functions or with GOOGLE_APPLICATION_CREDENTIALS)
-    admin.initializeApp();
-  } catch (error) {
-    console.error('Could not initialize Firebase Admin with default credentials');
-    console.error('Set up GOOGLE_APPLICATION_CREDENTIALS environment variable or use a service account key');
+    const serviceAccount = JSON.parse(rawJson);
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+  } catch (err) {
+    throw new Error(
+      'Failed to parse FIREBASE_ADMIN_SDK_JSON — make sure it is valid single-line JSON. ' +
+      String(err)
+    );
   }
 }
 
-export const adminDb = admin.firestore();
+export const adminDb   = admin.firestore();
 export const adminAuth = admin.auth();
-
 export default admin;
 
 /**
@@ -91,7 +93,7 @@ export async function updateAdminUserRole(uid: string, newRole: string) {
 export async function getAdminSensorParameters() {
   try {
     const doc = await adminDb.collection('parameters').doc('sensors').get();
-    
+
     if (!doc.exists) {
       console.warn('Sensor parameters document does not exist');
       return null;
@@ -99,17 +101,17 @@ export async function getAdminSensorParameters() {
 
     const data = doc.data();
     return {
-      id: doc.id,
-      temperatureWarningThreshold: data?.temperatureWarningThreshold || 40,
-      temperatureCriticalThreshold: data?.temperatureCriticalThreshold || 60,
-      firePercentWarningThreshold: data?.firePercentWarningThreshold || 20,
-      firePercentCriticalThreshold: data?.firePercentCriticalThreshold || 50,
-      pressureThreshold: data?.pressureThreshold || 5,
-      flowRateThreshold: data?.flowRateThreshold || 10,
-      waterLevelThreshold: data?.waterLevelThreshold || 20,
-      waterLevelNotificationEnabled: data?.waterLevelNotificationEnabled !== false,
-      updatedAt: data?.updatedAt?.toDate?.() || null,
-      updatedBy: data?.updatedBy || null,
+      id:                             doc.id,
+      temperatureWarningThreshold:    data?.temperatureWarningThreshold    ?? 40,
+      temperatureCriticalThreshold:   data?.temperatureCriticalThreshold   ?? 60,
+      firePercentWarningThreshold:    data?.firePercentWarningThreshold     ?? 20,
+      firePercentCriticalThreshold:   data?.firePercentCriticalThreshold   ?? 50,
+      pressureThreshold:              data?.pressureThreshold              ?? 5,
+      flowRateThreshold:              data?.flowRateThreshold              ?? 10,
+      waterLevelThreshold:            data?.waterLevelThreshold            ?? 20,
+      waterLevelNotificationEnabled:  data?.waterLevelNotificationEnabled  ?? true,
+      updatedAt:                      data?.updatedAt?.toDate?.()          ?? null,
+      updatedBy:                      data?.updatedBy                      ?? null,
     };
   } catch (error) {
     console.error('Error fetching sensor parameters:', error);

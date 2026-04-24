@@ -60,11 +60,75 @@ async function ensureFallbackFile() {
 }
 
 async function parseJsonLines(raw: string): Promise<SensorLogEntry[]> {
-  return raw
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => JSON.parse(line) as SensorLogEntry);
+  const entries: SensorLogEntry[] = [];
+
+  for (const line of raw.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    const separatorIndex = trimmed.indexOf(' | ');
+    let jsonStr: string;
+    let timestamp: string;
+
+    if (separatorIndex !== -1) {
+      timestamp = trimmed.substring(0, separatorIndex);
+      jsonStr = trimmed.substring(separatorIndex + 3);
+    } else {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed.timestamp) {
+          entries.push(parsed as SensorLogEntry);
+          continue;
+        }
+      } catch {
+        continue;
+      }
+      continue;
+    }
+
+    const sensor = JSON.parse(jsonStr);
+
+    // Sensor format mapping:
+    // flame: 4095 = 0% fire, 0 = 100% fire (inverted scale)
+    const firePercent = sensor.flame !== undefined
+      ? ((4095 - sensor.flame) / 4095) * 100
+      : 0;
+
+    // water: 0 = empty (0%), 1 = full (100%)
+    const waterLevelPercent = sensor.water !== undefined
+      ? sensor.water * 100
+      : 0;
+
+    // gas: 0 = 0% smoke, 1000 = 100% smoke
+    const smokePercent = sensor.gas !== undefined
+      ? (sensor.gas / 1000) * 100
+      : 0;
+
+    const temperatureC = sensor.temp ?? 0;
+    const humidity = sensor.hum ?? 0;
+
+    // Alert level based on fire/smoke and temperature
+    let alertLevel: 'NORMAL' | 'POTENSI_KEBAKARAN' | 'KEBAKARAN' = 'NORMAL';
+    if (sensor.fire === true || sensor.smoke === true || firePercent > 50 || smokePercent > 50) {
+      alertLevel = 'KEBAKARAN';
+    } else if (firePercent > 20 || smokePercent > 20 || temperatureC > 40) {
+      alertLevel = 'POTENSI_KEBAKARAN';
+    }
+
+    entries.push({
+      timestamp: timestamp,
+      temperatureC: temperatureC,
+      firePercent: firePercent,
+      pressureBar: smokePercent / 100, // Map smoke to pressure for now (0-1 range)
+      flowRateLpm: 0,
+      waterLevelPercent: waterLevelPercent,
+      valveOpen: false,
+      controlMode: 'AUTO',
+      alertLevel: alertLevel,
+    });
+  }
+
+  return entries;
 }
 
 async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 15000) {
@@ -139,7 +203,6 @@ async function webhdfsRead(): Promise<SensorLogEntry[]> {
 
   if (!base) throw new Error('HADOOP_WEBHDFS_URL atau HADOOP_NAMENODE_IP belum di-set');
 
-  // ✅ Langsung fetch, tidak perlu handle redirect
   const response = await fetchWithTimeout(
     `${base}${remotePath}?op=OPEN&user.name=${hdfsUser}`
   );
@@ -151,8 +214,94 @@ async function webhdfsRead(): Promise<SensorLogEntry[]> {
   const raw = await response.text();
   return parseJsonLines(raw);
 }
+
+export async function readLatestSensorFromHadoop(): Promise<SensorLogEntry | null> {
+  const base = getWebHdfsUrl();
+  const remotePath = '/iot/hydrant.txt';
+  const hdfsUser = process.env.HADOOP_USER || 'hadoop';
+
+  if (!base) throw new Error('HADOOP_WEBHDFS_URL atau HADOOP_NAMENODE_IP belum di-set');
+
+  const response = await fetchWithTimeout(
+    `${base}${remotePath}?op=OPEN&user.name=${hdfsUser}`
+  );
+
+  if (!response.ok) {
+    throw new Error(`Gagal membaca sensor: ${response.status}`);
+  }
+
+  const raw = await response.text();
+  const lines = raw.trim().split('\n').filter(Boolean);
+  
+  if (lines.length === 0) {
+    return null;
+  }
+
+  const lastLine = lines[lines.length - 1];
+  const separatorIndex = lastLine.indexOf(' | ');
+  
+  if (separatorIndex === -1) {
+    return null;
+  }
+
+  const timestamp = lastLine.substring(0, separatorIndex);
+  const jsonStr = lastLine.substring(separatorIndex + 3);
+  const sensor = JSON.parse(jsonStr);
+
+  // Sensor format mapping:
+  // flame: 4095 = 0% fire, 0 = 100% fire (inverted scale)
+  const firePercent = sensor.flame !== undefined
+    ? ((4095 - sensor.flame) / 4095) * 100
+    : 0;
+
+  // water: 0 = empty (0%), 1 = full (100%)
+  const waterLevelPercent = sensor.water !== undefined
+    ? sensor.water * 100
+    : 0;
+
+  // gas: 0 = 0% smoke, 1000 = 100% smoke
+  const smokePercent = sensor.gas !== undefined
+    ? (sensor.gas / 1000) * 100
+    : 0;
+
+  const temperatureC = sensor.temp ?? 0;
+
+  // Alert level based on fire/smoke and temperature
+  let alertLevel: 'NORMAL' | 'POTENSI_KEBAKARAN' | 'KEBAKARAN' = 'NORMAL';
+  if (sensor.fire === true || sensor.smoke === true || firePercent > 50 || smokePercent > 50) {
+    alertLevel = 'KEBAKARAN';
+  } else if (firePercent > 20 || smokePercent > 20 || temperatureC > 40) {
+    alertLevel = 'POTENSI_KEBAKARAN';
+  }
+
+  return {
+    timestamp: timestamp,
+    temperatureC: temperatureC,
+    firePercent: firePercent,
+    pressureBar: smokePercent / 100, // Map smoke to pressure for now (0-1 range)
+    flowRateLpm: 0,
+    waterLevelPercent: waterLevelPercent,
+    valveOpen: false,
+    controlMode: 'AUTO',
+    alertLevel: alertLevel,
+  };
+}
 export async function appendSensorLog(entry: SensorLogEntry) {
-  const line = `${JSON.stringify(entry)}\n`;
+  // Convert SensorLogEntry back to sensor format
+  const sensorData = {
+    // flame: 4095 = 0% fire, 0 = 100% fire (inverted scale)
+    flame: Math.round(4095 * (1 - entry.firePercent / 100)),
+    // water: 0 = empty, 1 = full
+    water: entry.waterLevelPercent / 100,
+    // gas: 0 = 0% smoke, 1000 = 100% smoke
+    gas: Math.round(entry.pressureBar * 1000), // pressureBar stores smoke % / 100
+    temp: entry.temperatureC,
+    hum: 0,
+    fire: entry.alertLevel === 'KEBAKARAN',
+    smoke: entry.alertLevel === 'KEBAKARAN',
+  };
+
+  const line = `${entry.timestamp} | ${JSON.stringify(sensorData)}\n`;
   const mode = process.env.HADOOP_MODE || 'local';
   let writeSuccess = false;
  
@@ -205,21 +354,15 @@ export async function appendSensorLog(entry: SensorLogEntry) {
   }
 }
 export async function readSensorLogs(limit = 100): Promise<SensorLogEntry[]> {
-  const mode = process.env.HADOOP_MODE || 'local';
-
-  if (mode.toLowerCase() === 'webhdfs') {
-    try {
-      const data = await webhdfsRead();
-      return data.slice(-limit).reverse();
-    } catch (error) {
-      console.error('Baca WebHDFS gagal, fallback ke file lokal:', error);
-    }
+  try {
+    const data = await webhdfsRead();
+    return data.slice(-limit).reverse();
+  } catch (error) {
+    console.error('Baca WebHDFS gagal, fallback ke file lokal:', error);
   }
 
-  // await ensureFallbackFile();
-  // const raw = await fs.readFile(FALLBACK_LOG_FILE, 'utf8');
-  // const parsed = await parseJsonLines(raw);
-  // return parsed.slice(-limit).reverse();
-
-  throw new Error('Mode baca log tidak valid atau semua metode baca gagal');
+  await ensureFallbackFile();
+  const raw = await fs.readFile(FALLBACK_LOG_FILE, 'utf8');
+  const parsed = await parseJsonLines(raw);
+  return parsed.slice(-limit).reverse();
 }

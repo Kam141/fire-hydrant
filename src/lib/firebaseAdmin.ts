@@ -1,7 +1,3 @@
-// src/lib/firebaseAdmin.ts
-// Server-side Firebase Admin SDK — credentials loaded from FIREBASE_ADMIN_SDK_JSON env var
-// Never import this file in client-side code (pages/components) — server/API routes only
-
 import * as admin from 'firebase-admin';
 
 if (!admin.apps.length) {

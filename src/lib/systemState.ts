@@ -1,15 +1,9 @@
-import { appendSensorLog } from '@/lib/hadoopClient';
+import { appendSensorLog, readLatestSensorFromHadoop } from '@/lib/hadoopClient';
 import { getAdminSensorParameters } from '@/lib/firebaseAdmin';
 import { AlertLevel, SystemState, SensorParameters } from '@/types/system';
 
 const SENSOR_INTERVAL_MS = 5_000;
 const LOG_INTERVAL_MS = 60_000;
-
-function randomStep(current: number, min: number, max: number, step = 2) {
-  const delta = (Math.random() * step * 2) - step;
-  const next = current + delta;
-  return Math.min(max, Math.max(min, next));
-}
 
 async function resolveAlertLevel(
   temperatureC: number,
@@ -137,32 +131,32 @@ class HydrantSystem {
   }
 
   private async tickSensor() {
-    const sensor = this.state.sensor;
-
-    const fireBaseline = this.state.valveOpen ? 0.8 : 1;
-
-    sensor.temperatureC = randomStep(sensor.temperatureC * fireBaseline, 25, 80, 3);
-    sensor.firePercent = randomStep(sensor.firePercent * fireBaseline, 0, 100, 7);
-    sensor.pressureBar = randomStep(sensor.pressureBar, 2, 10, 0.8);
-    sensor.waterLevelPercent = randomStep(sensor.waterLevelPercent, 10, 100, 1);
-
-    const hazardBoost = Math.random();
-    if (hazardBoost > 0.9) {
-      sensor.firePercent = Math.min(100, sensor.firePercent + 20);
-      sensor.temperatureC = Math.min(80, sensor.temperatureC + 8);
+    let sensorData = null;
+    try {
+      sensorData = await readLatestSensorFromHadoop();
+    } catch (error) {
+      console.error('Gagal membaca sensor dari Hadoop:', error);
     }
 
-    this.state.alertLevel = await resolveAlertLevel(
-      sensor.temperatureC,
-      sensor.firePercent,
-      this.parameters
-    );
+    if (sensorData) {
+      this.state.sensor.temperatureC = sensorData.temperatureC;
+      this.state.sensor.firePercent = sensorData.firePercent;
+      this.state.sensor.pressureBar = sensorData.pressureBar;
+      this.state.sensor.waterLevelPercent = sensorData.waterLevelPercent;
+      this.state.alertLevel = sensorData.alertLevel;
+    } else {
+      this.state.alertLevel = await resolveAlertLevel(
+        this.state.sensor.temperatureC,
+        this.state.sensor.firePercent,
+        this.parameters
+      );
+    }
 
     if (this.state.controlMode === 'AUTO') {
       this.applyAutoValveRule();
     }
 
-    sensor.timestamp = new Date().toISOString();
+    this.state.sensor.timestamp = new Date().toISOString();
 
     await this.notifyIfNeeded();
   }

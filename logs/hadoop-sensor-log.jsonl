@@ -225,3 +225,10 @@
 {"timestamp":"2026-04-15T08:46:35.221Z","temperatureC":44.32053405664202,"firePercent":43.88620191364256,"pressureBar":5.349333982780929,"flowRateLpm":0,"waterLevelPercent":98.62133734573645,"alertLevel":"NORMAL","controlMode":"AUTO","valveOpen":false}
 {"timestamp":"2026-04-15T16:40:50.418Z","temperatureC":54.99787224550284,"firePercent":52.39709781939717,"pressureBar":2.3948460432729126,"flowRateLpm":0,"waterLevelPercent":100,"alertLevel":"NORMAL","controlMode":"AUTO","valveOpen":false}
 {"timestamp":"2026-04-16T02:09:39.124Z","temperatureC":25,"firePercent":12.356132271519387,"pressureBar":7.579748634564194,"flowRateLpm":120,"waterLevelPercent":96.47953725656288,"alertLevel":"NORMAL","controlMode":"MANUAL","valveOpen":true}
+2026-04-23T09:39:59.742Z | {"flame":3907,"water":1,"gas":363,"temp":33,"hum":0,"fire":false,"smoke":false}
+2026-04-23T09:42:55.415Z | {"flame":3907,"water":1,"gas":363,"temp":33,"hum":0,"fire":false,"smoke":false}
+2026-04-23T09:43:55.613Z | {"flame":3907,"water":1,"gas":363,"temp":33,"hum":0,"fire":false,"smoke":false}
+2026-04-23T09:59:34.627Z | {"flame":4095,"water":0,"gas":422,"temp":31.7,"hum":0,"fire":false,"smoke":false}
+2026-04-23T10:00:35.091Z | {"flame":4095,"water":0,"gas":422,"temp":31.7,"hum":0,"fire":false,"smoke":false}
+2026-04-23T10:01:35.039Z | {"flame":4095,"water":0,"gas":422,"temp":31.7,"hum":0,"fire":false,"smoke":false}
+2026-04-23T10:14:50.441Z | {"flame":4095,"water":0,"gas":372,"temp":31.4,"hum":0,"fire":false,"smoke":false}

@@ -1,17 +1,19 @@
 .page {
   min-height: 100vh;
-  background:
-    /* radial-gradient(860px 400px at 8% -6%, rgba(255, 137, 102, 0.35), transparent 62%), */
-    radial-gradient(760px 340px at 94% -2%, rgba(214, 69, 69, 0.24), transparent 56%),
-    linear-gradient(180deg, #ffffff, #ffffff 48%, #ffffff);
+  background: 
+    radial-gradient(800px circle at 15% 5%, rgba(220, 53, 69, 0.05), transparent 40%),
+    radial-gradient(900px circle at 85% 60%, rgba(245, 137, 107, 0.08), transparent 45%),
+    linear-gradient(135deg, #fdfbfb 0%, #f4f6f8 100%);
   color: #1f2630;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow-x: hidden;
 }
 
 .shell {
-  width: min(1220px, 100% - 48px);
+  width: 100%;
   margin: 0 auto;
-  padding: 18px 0 64px;
+  padding: 24px 5% 64px;
+  box-sizing: border-box;
 }
 
 .topNav {
@@ -58,7 +60,7 @@
 
 .navLinks {
   display: flex;
-  gap: 2rem;
+  gap: clamp(3rem, 6vw, 7rem);
   font-size: 14px;
 }
 
@@ -89,20 +91,20 @@
 
 .sectionStack {
   display: grid;
-  gap: 32px;
-  padding-top: 30px;
+  gap: clamp(80px, 12vw, 160px);
+  padding-top: clamp(48px, 8vw, 96px);
 }
 
 .hero {
-  display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
-  gap: 24px;
-  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 64px 32px;
   border-radius: 22px;
   border: 1px solid #ecdccf;
   background: rgba(255, 250, 243, 0.82);
   box-shadow: 0 18px 44px -30px rgba(95, 53, 42, 0.42);
-  align-items: center;
 }
 
 .panelSection,
@@ -116,37 +118,43 @@
 }
 
 .heroLeft {
-  padding: 8px 6px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 1000px;
 }
 
 .kicker {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.14em;
   color: #c84937;
-  margin: 0 0 14px;
+  margin: 0 0 16px;
   text-transform: uppercase;
 }
 
 .heroLeft h1 {
-  margin: 0 0 16px;
-  font-size: clamp(36px, 4.2vw, 62px);
-  line-height: 1.04;
-  max-width: 14ch;
+  margin: 0 0 20px;
+  font-size: clamp(38px, 4.5vw, 68px);
+  line-height: 1.1;
+  max-width: 100%;
 }
 
 .heroLeft p {
-  margin: 0 0 24px;
+  margin: 0 0 32px;
   color: #4c525f;
   line-height: 1.65;
-  max-width: 64ch;
+  font-size: 18px;
+  max-width: 760px;
 }
 
 .ctaRow {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 18px;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 24px;
 }
 
 .primaryBtn,
@@ -251,15 +259,23 @@
 .featureGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
+  gap: 64px;
 }
 
 .featureCard {
-  border-radius: 18px;
-  padding: 22px;
-  border: 1px solid #2f3442;
-  background: linear-gradient(165deg, #2c303c, #1f232d);
+  border-radius: 20px;
+  padding: 32px 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(165deg, #2a2e39, #1c1f26);
   color: #f5f7fc;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.featureCard:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px -15px rgba(220, 53, 69, 0.15);
+  border-color: rgba(220, 53, 69, 0.3);
 }
 
 .featureIcon {
@@ -285,7 +301,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 64px;
   flex-wrap: wrap;
 }
 
@@ -298,6 +314,12 @@
   border-radius: 16px;
   border: 1px solid #e8dacc;
   background: #fffdf9;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.stepCard:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 24px -10px rgba(220, 53, 69, 0.15);
 }
 
 .stepCard p {
@@ -329,53 +351,100 @@
   flex-shrink: 0;
 }
 
-.bottomGrid {
+/* Footer Styles */
+.premiumFooter {
+  background: linear-gradient(180deg, #1f232d 0%, #15181f 100%);
+  color: #c8cfde;
+  padding: 80px 5% 32px;
+  border-top: 1px solid #333947;
+  margin-top: 48px;
+}
+
+.footerContent {
+  max-width: 1320px;
+  margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 64px;
+  margin-bottom: 64px;
+}
+
+.footerLogoWrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.footerLogoWrap h3 {
+  color: #fff;
+  font-size: 24px;
+  margin: 0;
+  font-weight: 700;
+}
+
+.footerBrand p {
+  line-height: 1.6;
+  font-size: 15px;
+  max-width: 380px;
+  color: #9aa2b5;
+}
+
+.footerLinks h4, .footerContact h4 {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 24px;
+  letter-spacing: 0.5px;
+}
+
+.footerLinks ul, .footerContact ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
 }
 
-.bottomGrid article {
-  padding: 22px;
-  border: 1px solid #2f3442;
-  background: linear-gradient(165deg, #2d3240, #222732);
-}
-
-.bottomGrid h3 {
-  color: #f2f5fb;
-  font-size: 18px;
-  margin: 0 0 8px;
-}
-
-.bottomGrid p {
-  margin: 0;
+.footerLinks a {
   color: #c8cfde;
-  line-height: 1.56;
-  font-size: 14px;
-}
-
-.moduleStrip {
-  padding: 18px;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
-}
-
-.moduleStrip a {
-  border-radius: 999px;
-  padding: 11px 18px;
-  font-size: 13px;
-  font-weight: 700;
-  color: #fff;
-  background: linear-gradient(120deg, #d74636, #b1261c);
   text-decoration: none;
+  font-size: 15px;
+  transition: color 0.2s ease;
+}
+
+.footerLinks a:hover {
+  color: #f26958;
+}
+
+.footerContact li {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.footerContact strong {
+  display: block;
+  color: #fff;
+  font-size: 12px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  opacity: 0.7;
+}
+
+.footerBottom {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding-top: 32px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  text-align: center;
+  font-size: 13px;
+  color: #7a808f;
 }
 
 @media (max-width: 1040px) {
   .shell {
-    width: min(1220px, 100% - 26px);
-    padding-bottom: 36px;
+    padding: 16px 24px 36px;
   }
 
   .topNav {
@@ -386,7 +455,7 @@
 
   .navLinks {
     justify-content: center;
-    gap: 1.25rem;
+    gap: 4rem;
   }
 
   .navActions {
@@ -394,13 +463,12 @@
   }
 
   .sectionStack {
-    gap: 20px;
-    padding-top: 20px;
+    gap: 64px;
+    padding-top: 40px;
   }
 
   .hero {
-    grid-template-columns: 1fr;
-    padding: 20px;
+    padding: 32px 20px;
   }
 
   .heroLeft,
@@ -433,12 +501,8 @@
     max-width: none;
   }
 
-  .moduleStrip {
-    justify-content: stretch;
-  }
-
-  .moduleStrip a {
-    width: 100%;
-    text-align: center;
+  .footerContent {
+    grid-template-columns: 1fr;
+    gap: 40px;
   }
 }

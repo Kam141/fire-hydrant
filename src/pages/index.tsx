@@ -166,7 +166,7 @@ export default function HomePage() {
             <nav className={styles.navLinks}>
               <a href="#features">Features</a>
               <a href="#about">Workflow</a>
-              <a href="#modules">Modules</a>
+              <a href="#contact">Contact</a>
             </nav>
 
             <div className={styles.navActions}>
@@ -281,33 +281,43 @@ export default function HomePage() {
                 </article>
               </div>
             </section>
-
-            <section id="modules" className={styles.bottomGrid}>
-              <article>
-                <h3>Real-time Monitoring</h3>
-                <p>Data sensor api, suhu, tekanan, dan flow ditampilkan terus menerus.</p>
-              </article>
-
-              <article>
-                <h3>Automatic Protection</h3>
-                <p>Valve terbuka otomatis saat indikator kebakaran melewati ambang batas.</p>
-              </article>
-
-              <article>
-                <h3>Audit and Logs</h3>
-                <p>Semua data dicatat periodik ke Hadoop untuk evaluasi dan investigasi.</p>
-              </article>
-            </section>
-
-            <section className={styles.moduleStrip}>
-              <Link href="/dashboard">Dashboard</Link>
-              <Link href="/auto-control">Kontrol Otomatis</Link>
-              <Link href="/manual-control">Kontrol Manual</Link>
-              <Link href="/notifications">Notifikasi</Link>
-              <Link href="/log-read">Log Read</Link>
-            </section>
           </div>
         </div>
+
+        <footer id="contact" className={styles.premiumFooter}>
+          <div className={styles.footerContent}>
+            <div className={styles.footerBrand}>
+              <div className={styles.footerLogoWrap}>
+                <Image src="/logo.png" alt="Hydrant Guard" width={32} height={32} />
+                <h3>Hydrant Guard</h3>
+              </div>
+              <p>Sistem cerdas untuk respons tanggap darurat dan proteksi aset Anda dari bahaya kebakaran secara real-time tersentralisasi dalam satu command center.</p>
+            </div>
+            
+            <div className={styles.footerLinks}>
+              <h4>Platform Modules</h4>
+              <ul>
+                <li><Link href="/dashboard">Dashboard Analytics</Link></li>
+                <li><Link href="/auto-control">Automatic Valve Control</Link></li>
+                <li><Link href="/manual-control">Manual Control</Link></li>
+                <li><Link href="/notifications">Alert & Notifications</Link></li>
+                <li><Link href="/log-read">System Audit Logs</Link></li>
+              </ul>
+            </div>
+
+            <div className={styles.footerContact}>
+              <h4>Hubungi Kami</h4>
+              <ul>
+                <li><strong>Email:</strong> support@hydrantguard.id</li>
+                <li><strong>Phone:</strong> +62 811 2345 6789</li>
+                <li><strong>Address:</strong> Command Center Lt. 3, Jakarta Selatan</li>
+              </ul>
+            </div>
+          </div>
+          <div className={styles.footerBottom}>
+            <p>&copy; {new Date().getFullYear()} Hydrant Guard. All rights reserved.</p>
+          </div>
+        </footer>
       </main>
     </>
   );

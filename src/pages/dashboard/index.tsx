@@ -52,9 +52,9 @@ function DashboardPage() {
 
   const getDataSourceLabel = () => {
     if (dataSource === 'hadoop-logs') {
-      return '🟢 Live Hadoop Logs';
+      return 'Live Hadoop Logs';
     }
-    return '🟡 System State (Fallback)';
+    return 'System State (Fallback)';
   };
 
   const getIncidentInsight = () => {
@@ -67,7 +67,11 @@ function DashboardPage() {
     const tempWarning = parameters.temperatureWarningThreshold || 40;
     const tempCritical = parameters.temperatureCriticalThreshold || 60;
 
-    return `Konfigurasi Threshold Terkini:\n• WARNING: Api ≥ ${fireWarning}% dan Suhu ≥ ${tempWarning}°C\n• CRITICAL: Api ≥ ${fireCritical}% dan Suhu ≥ ${tempCritical}°C\n\nKetika threshold terpenuhi, valve otomatis membuka untuk mitigasi kebakaran.`;
+    return `Konfigurasi Threshold Terkini:
+• Warning: Api ≥ ${fireWarning}% dan Suhu ≥ ${tempWarning}°C
+• Critical: Api ≥ ${fireCritical}% dan Suhu ≥ ${tempCritical}°C
+
+Ketika threshold terpenuhi, valve otomatis membuka untuk mitigasi kebakaran.`;
   };
 
   const chartLogs = [...logs].reverse();
@@ -85,12 +89,12 @@ function DashboardPage() {
         <section className={styles.kpiStrip}>
           <MetricBox label="Fire Percentage" value={`${state?.sensor.firePercent.toFixed(0) ?? '-'}%`} sub="Real-time sensor" />
           <MetricBox label="Temperature" value={`${state?.sensor.temperatureC.toFixed(1) ?? '-'}°C`} sub="Live reading" />
-          <MetricBox label="Pressure" value={`${state?.sensor.pressureBar.toFixed(2) ?? '-'} bar`} sub="Hydrant line" />
+          {/* <MetricBox label="Pressure" value={`${state?.sensor.pressureBar.toFixed(2) ?? '-'} bar`} sub="Hydrant line" /> */}
           <MetricBox label="System Status" value={<StatusPill level={state?.alertLevel} />} sub={state?.controlMode ?? '-'} />
         </section>
 
         <section className={styles.contentGrid}>
-          <div className={styles.mainPanel}>
+          <div className={styles.mainPanel}>  
             <LinePanel
               title="Fire Sensor Trend"
               subtitle="Fire intensity (%)"
@@ -130,7 +134,7 @@ function DashboardPage() {
 
           <aside className={styles.sidePanel}>
             <MetricBox label="Water Level" value={`${state?.sensor.waterLevelPercent.toFixed(0) ?? '-'}%`} sub="Tank reserve" />
-            <MetricBox label="Flow Rate" value={`${state?.sensor.flowRateLpm.toFixed(0) ?? '-'} L/min`} sub="Valve throughput" />
+            {/* <MetricBox label="Flow Rate" value={`${state?.sensor.flowRateLpm.toFixed(0) ?? '-'} L/min`} sub="Valve throughput" /> */}
             <div className={styles.insightCard}>
               <p className={styles.insightTitle}>Incident Insight</p>
               <p style={{ whiteSpace: 'pre-wrap', fontSize: '0.85em', lineHeight: '1.5' }}>
@@ -145,4 +149,3 @@ function DashboardPage() {
 }
 
 export default withAuth(DashboardPage);
-

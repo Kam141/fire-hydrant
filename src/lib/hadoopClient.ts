@@ -86,25 +86,78 @@ async function parseJsonLines(raw: string): Promise<SensorLogEntry[]> {
       continue;
     }
 
-    const sensor = JSON.parse(jsonStr);
+    // Sanitize raw JSON string to replace NaN/Infinity with valid numbers before parsing
+    // Also extract only the JSON object (stop at first complete JSON object, ignore trailing data)
+    let jsonToParse = jsonStr;
+    
+    // Try to extract only the JSON object portion (from { to matching })
+    const jsonStartIdx = jsonStr.indexOf('{');
+    if (jsonStartIdx !== -1) {
+      let braceCount = 0;
+      let jsonEndIdx = jsonStartIdx;
+      for (let i = jsonStartIdx; i < jsonStr.length; i++) {
+        if (jsonStr[i] === '{') braceCount++;
+        if (jsonStr[i] === '}') {
+          braceCount--;
+          if (braceCount === 0) {
+            jsonEndIdx = i;
+            break;
+          }
+        }
+      }
+      // Extract just the complete JSON object
+      jsonToParse = jsonStr.substring(jsonStartIdx, jsonEndIdx + 1);
+    }
 
-    // Sensor format mapping:
+    const sanitizedJsonStr = jsonToParse
+      .replace(/:\s*NaN\b/g, ': 0')
+      .replace(/:\s*Infinity\b/g, ': 999999')
+      .replace(/:\s*-Infinity\b/g, ': -999999')
+      .replace(/:\s*nan\b/g, ': 0')
+      .replace(/:\s*infinity\b/g, ': 999999')
+      .replace(/:\s*-infinity\b/g, ': -999999');
+
+    let sensor: Record<string, unknown>;
+    try {
+      sensor = JSON.parse(sanitizedJsonStr);
+    } catch {
+      // Log the problematic line for debugging
+      console.warn('[parseJsonLines] Failed to parse JSON after sanitization:', sanitizedJsonStr.substring(0, 100));
+      continue;
+    }
+
+    // Sensor format mapping with value sanitization:
+    const sanitizeFirePercent = (val: unknown): number => {
+      const num = typeof val === 'number' ? val : 0;
+      return Number.isFinite(num) ? Math.min(100, Math.max(0, num)) : 0;
+    };
+
+    const sanitizePercentage = (val: unknown): number => {
+      const num = typeof val === 'number' ? val : 0;
+      return Number.isFinite(num) ? Math.min(100, Math.max(0, num)) : 0;
+    };
+
+    const sanitizeNumeric = (val: unknown): number => {
+      const num = typeof val === 'number' ? val : 0;
+      return Number.isFinite(num) ? num : 0;
+    };
+
     // flame: 4095 = 0% fire, 0 = 100% fire (inverted scale)
     const firePercent = sensor.flame !== undefined
-      ? ((4095 - sensor.flame) / 4095) * 100
+      ? sanitizeFirePercent(((4095 - (sensor.flame as number)) / 4095) * 100)
       : 0;
 
     // water: 0 = empty (0%), 1 = full (100%)
     const waterLevelPercent = sensor.water !== undefined
-      ? sensor.water * 100
+      ? sanitizePercentage((sensor.water as number) * 100)
       : 0;
 
     // gas: 0 = 0% smoke, 1000 = 100% smoke
     const smokePercent = sensor.gas !== undefined
-      ? (sensor.gas / 1000) * 100
+      ? sanitizePercentage(((sensor.gas as number) / 1000) * 100)
       : 0;
 
-    const temperatureC = sensor.temp ?? 0;
+    const temperatureC = sanitizeNumeric(sensor.temp);
     const humidity = sensor.hum ?? 0;
 
     // Alert level based on fire/smoke and temperature
@@ -222,15 +275,20 @@ export async function readLatestSensorFromHadoop(): Promise<SensorLogEntry | nul
 
   if (!base) throw new Error('HADOOP_WEBHDFS_URL atau HADOOP_NAMENODE_IP belum di-set');
 
+  console.log(`[ReadLatestSensorFromHadoop] Fetching from: ${base}${remotePath}?op=OPEN&user.name=${hdfsUser}`);
+
   const response = await fetchWithTimeout(
     `${base}${remotePath}?op=OPEN&user.name=${hdfsUser}`
   );
 
   if (!response.ok) {
+    const errorBody = await response.text();
+    console.error(`[ReadLatestSensorFromHadoop] HTTP ${response.status}: ${errorBody}`);
     throw new Error(`Gagal membaca sensor: ${response.status}`);
   }
 
   const raw = await response.text();
+  console.log(`[ReadLatestSensorFromHadoop] Raw data (${raw.length} chars): ${raw.substring(0, 200)}...`);
   const lines = raw.trim().split('\n').filter(Boolean);
   
   if (lines.length === 0) {
@@ -238,33 +296,120 @@ export async function readLatestSensorFromHadoop(): Promise<SensorLogEntry | nul
   }
 
   const lastLine = lines[lines.length - 1];
+  let timestamp: string;
+  let jsonStr: string;
   const separatorIndex = lastLine.indexOf(' | ');
   
   if (separatorIndex === -1) {
-    return null;
+    // No separator - assume raw JSON format from sensor
+    timestamp = new Date().toISOString();
+    jsonStr = lastLine;
+  } else {
+    timestamp = lastLine.substring(0, separatorIndex);
+    jsonStr = lastLine.substring(separatorIndex + 3);
   }
 
-  const timestamp = lastLine.substring(0, separatorIndex);
-  const jsonStr = lastLine.substring(separatorIndex + 3);
-  const sensor = JSON.parse(jsonStr);
+  let sensor: Record<string, unknown>;
+  // Extract only the JSON object portion (from { to matching }), ignore trailing data
+  let jsonToParse = jsonStr;
+  const jsonStartIdx = jsonStr.indexOf('{');
+  if (jsonStartIdx !== -1) {
+    let braceCount = 0;
+    let jsonEndIdx = jsonStartIdx;
+    for (let i = jsonStartIdx; i < jsonStr.length; i++) {
+      if (jsonStr[i] === '{') braceCount++;
+      if (jsonStr[i] === '}') {
+        braceCount--;
+        if (braceCount === 0) {
+          jsonEndIdx = i;
+          break;
+        }
+      }
+    }
+    jsonToParse = jsonStr.substring(jsonStartIdx, jsonEndIdx + 1);
+  }
 
-  // Sensor format mapping:
+  // Sanitize raw JSON string to replace NaN/Infinity with valid numbers
+  const sanitizedJsonStr = jsonToParse
+    .replace(/:\s*NaN\b/g, ': 0')
+    .replace(/:\s*Infinity\b/g, ': 999999')
+    .replace(/:\s*-Infinity\b/g, ': -999999')
+    .replace(/:\s*nan\b/g, ': 0')
+    .replace(/:\s*infinity\b/g, ': 999999')
+    .replace(/:\s*-infinity\b/g, ': -999999');
+
+  try {
+    sensor = JSON.parse(sanitizedJsonStr);
+  } catch {
+    console.warn('[ReadLatestSensorFromHadoop] Gagal parse JSON after sanitization, coba parsing lengkap...');
+    try {
+      // For fallback, also extract JSON from lastLine
+      let lastLineJsonToParse = lastLine;
+      const lastLineJsonStartIdx = lastLine.indexOf('{');
+      if (lastLineJsonStartIdx !== -1) {
+        let braceCount = 0;
+        let jsonEndIdx = lastLineJsonStartIdx;
+        for (let i = lastLineJsonStartIdx; i < lastLine.length; i++) {
+          if (lastLine[i] === '{') braceCount++;
+          if (lastLine[i] === '}') {
+            braceCount--;
+            if (braceCount === 0) {
+              jsonEndIdx = i;
+              break;
+            }
+          }
+        }
+        lastLineJsonToParse = lastLine.substring(lastLineJsonStartIdx, jsonEndIdx + 1);
+      }
+      
+      // Sanitize lastLine as well for fallback parsing
+      const sanitizedLastLine = lastLineJsonToParse
+        .replace(/:\s*NaN\b/g, ': 0')
+        .replace(/:\s*Infinity\b/g, ': 999999')
+        .replace(/:\s*-Infinity\b/g, ': -999999')
+        .replace(/:\s*nan\b/g, ': 0')
+        .replace(/:\s*infinity\b/g, ': 999999')
+        .replace(/:\s*-infinity\b/g, ': -999999');
+      
+      sensor = JSON.parse(sanitizedLastLine);
+      timestamp = new Date().toISOString();
+    } catch {
+      return null;
+    }
+  }
+
+  // Sensor format mapping with value sanitization:
   // flame: 4095 = 0% fire, 0 = 100% fire (inverted scale)
+  const sanitizeFirePercent = (val: unknown): number => {
+    const num = typeof val === 'number' ? val : 0;
+    return Number.isFinite(num) ? Math.min(100, Math.max(0, num)) : 0;
+  };
+
+  const sanitizePercentage = (val: unknown): number => {
+    const num = typeof val === 'number' ? val : 0;
+    return Number.isFinite(num) ? Math.min(100, Math.max(0, num)) : 0;
+  };
+
+  const sanitizeNumeric = (val: unknown): number => {
+    const num = typeof val === 'number' ? val : 0;
+    return Number.isFinite(num) ? num : 0;
+  };
+
   const firePercent = sensor.flame !== undefined
-    ? ((4095 - sensor.flame) / 4095) * 100
+    ? sanitizeFirePercent(((4095 - (sensor.flame as number)) / 4095) * 100)
     : 0;
 
   // water: 0 = empty (0%), 1 = full (100%)
   const waterLevelPercent = sensor.water !== undefined
-    ? sensor.water * 100
+    ? sanitizePercentage((sensor.water as number) * 100)
     : 0;
 
   // gas: 0 = 0% smoke, 1000 = 100% smoke
   const smokePercent = sensor.gas !== undefined
-    ? (sensor.gas / 1000) * 100
+    ? sanitizePercentage(((sensor.gas as number) / 1000) * 100)
     : 0;
 
-  const temperatureC = sensor.temp ?? 0;
+  const temperatureC = sanitizeNumeric(sensor.temp);
 
   // Alert level based on fire/smoke and temperature
   let alertLevel: 'NORMAL' | 'POTENSI_KEBAKARAN' | 'KEBAKARAN' = 'NORMAL';
@@ -287,15 +432,22 @@ export async function readLatestSensorFromHadoop(): Promise<SensorLogEntry | nul
   };
 }
 export async function appendSensorLog(entry: SensorLogEntry) {
+  // Helper function to sanitize numeric values (replace NaN/Infinity with 0)
+  const sanitizeNumber = (value: number | undefined | null): number => {
+    if (value === null || value === undefined) return 0;
+    if (!Number.isFinite(value)) return 0;
+    return value;
+  };
+
   // Convert SensorLogEntry back to sensor format
   const sensorData = {
     // flame: 4095 = 0% fire, 0 = 100% fire (inverted scale)
-    flame: Math.round(4095 * (1 - entry.firePercent / 100)),
+    flame: Math.round(4095 * (1 - sanitizeNumber(entry.firePercent) / 100)),
     // water: 0 = empty, 1 = full
-    water: entry.waterLevelPercent / 100,
+    water: sanitizeNumber(entry.waterLevelPercent) / 100,
     // gas: 0 = 0% smoke, 1000 = 100% smoke
-    gas: Math.round(entry.pressureBar * 1000), // pressureBar stores smoke % / 100
-    temp: entry.temperatureC,
+    gas: Math.round(sanitizeNumber(entry.pressureBar) * 1000), // pressureBar stores smoke % / 100
+    temp: sanitizeNumber(entry.temperatureC),
     hum: 0,
     fire: entry.alertLevel === 'KEBAKARAN',
     smoke: entry.alertLevel === 'KEBAKARAN',

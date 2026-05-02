@@ -8,10 +8,10 @@ export const ROLE_BASED_ROUTES: Record<string, UserRole[]> = {
   '/auto-control': ['admin', 'petugas'],
   '/manual-control': ['admin', 'petugas'],
   '/diagnostic': ['admin', 'petugas'],
-  '/parameters': ['admin', 'petugas'],
   '/log-read': ['admin', 'petugas', 'user'],
   '/notifications': ['admin', 'petugas', 'user'],
   '/admin/user-management': ['admin'],
+  '/admin/sensor-calibration': ['admin'],
 };
 
 /**

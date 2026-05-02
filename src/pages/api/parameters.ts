@@ -17,10 +17,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         temperatureCriticalThreshold: 60,
         firePercentWarningThreshold: 70,
         firePercentCriticalThreshold: 100,
+        smokePercentWarningThreshold: 30,
+        smokePercentCriticalThreshold: 60,
         pressureThreshold: 5,
         flowRateThreshold: 10,
         waterLevelThreshold: 20,
         waterLevelNotificationEnabled: true,
+        // Calibration defaults
+        fireRawMin: 0,
+        fireRawMax: 4095,
+        smokeRawMin: 0,
+        smokeRawMax: 1000,
+        tempRawMin: 0,
+        tempRawMax: 100,
       };
 
       if (doc.exists) {
@@ -79,10 +88,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         temperatureCriticalThreshold,
         firePercentWarningThreshold,
         firePercentCriticalThreshold,
+        smokePercentWarningThreshold,
+        smokePercentCriticalThreshold,
         pressureThreshold,
         flowRateThreshold,
         waterLevelThreshold,
         waterLevelNotificationEnabled,
+        fireRawMin,
+        fireRawMax,
+        smokeRawMin,
+        smokeRawMax,
+        tempRawMin,
+        tempRawMax,
       } = req.body;
 
       // Validate inputs
@@ -128,6 +145,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
       }
 
+      // Validate smoke thresholds if provided
+      if (smokePercentWarningThreshold !== undefined || smokePercentCriticalThreshold !== undefined) {
+        const smokeWarn = smokePercentWarningThreshold ?? 30;
+        const smokeCrit = smokePercentCriticalThreshold ?? 60;
+        if (smokeWarn < 0 || smokeWarn > 100 || smokeCrit < 0 || smokeCrit > 100 || smokeWarn >= smokeCrit) {
+          return res.status(400).json({
+            success: false,
+            error: 'Smoke thresholds invalid. Warning must be less than Critical and both must be 0-100.',
+          });
+        }
+      }
+
       if (
         pressureThreshold < 0 ||
         pressureThreshold > 50 ||
@@ -143,7 +172,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       try {
-        console.log('Updating sensor parameters...', {
+        console.log('Updating sensor parameters...');
+
+        const updateData: any = {
           temperatureWarningThreshold,
           temperatureCriticalThreshold,
           firePercentWarningThreshold,
@@ -151,22 +182,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           pressureThreshold,
           flowRateThreshold,
           waterLevelThreshold,
-          waterLevelNotificationEnabled,
-        });
+          waterLevelNotificationEnabled: waterLevelNotificationEnabled !== false,
+          updatedAt: new Date(),
+          updatedBy: userId,
+        };
+
+        // Add optional fields if provided
+        if (smokePercentWarningThreshold !== undefined) {
+          updateData.smokePercentWarningThreshold = smokePercentWarningThreshold;
+        }
+        if (smokePercentCriticalThreshold !== undefined) {
+          updateData.smokePercentCriticalThreshold = smokePercentCriticalThreshold;
+        }
+        if (fireRawMin !== undefined) updateData.fireRawMin = fireRawMin;
+        if (fireRawMax !== undefined) updateData.fireRawMax = fireRawMax;
+        if (smokeRawMin !== undefined) updateData.smokeRawMin = smokeRawMin;
+        if (smokeRawMax !== undefined) updateData.smokeRawMax = smokeRawMax;
+        if (tempRawMin !== undefined) updateData.tempRawMin = tempRawMin;
+        if (tempRawMax !== undefined) updateData.tempRawMax = tempRawMax;
 
         await adminDb.collection('parameters').doc('sensors').set(
-          {
-            temperatureWarningThreshold,
-            temperatureCriticalThreshold,
-            firePercentWarningThreshold,
-            firePercentCriticalThreshold,
-            pressureThreshold,
-            flowRateThreshold,
-            waterLevelThreshold,
-            waterLevelNotificationEnabled: waterLevelNotificationEnabled !== false,
-            updatedAt: new Date(),
-            updatedBy: userId,
-          },
+          updateData,
           { merge: true }
         );
 
@@ -175,18 +211,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).json({
           success: true,
           message: 'Parameter berhasil diperbarui',
-          data: {
-            temperatureWarningThreshold,
-            temperatureCriticalThreshold,
-            firePercentWarningThreshold,
-            firePercentCriticalThreshold,
-            pressureThreshold,
-            flowRateThreshold,
-            waterLevelThreshold,
-            waterLevelNotificationEnabled,
-            updatedAt: new Date(),
-            updatedBy: userId,
-          },
+          data: updateData,
         });
       } catch (error) {
         console.error('Error updating parameters:', error);

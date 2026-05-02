@@ -188,6 +188,7 @@ export default function LogReadPage() {
                   <th>Waktu</th>
                   <th>Api (%)</th>
                   <th>Suhu (C)</th>
+                  <th>Asap (%)</th>
                   {/* <th>Tekanan</th> */}
                   {/* <th>Flow</th> */}
                   <th>Valve</th>
@@ -207,6 +208,7 @@ export default function LogReadPage() {
                     <td>{new Date(item.timestamp).toLocaleString('id-ID')}</td>
                     <td>{item.firePercent.toFixed(1)}</td>
                     <td>{item.temperatureC.toFixed(1)}</td>
+                    <td>{(item.pressureBar * 100).toFixed(1)}</td>
                     {/* <td>{item.pressureBar.toFixed(2)}</td> */}
                     {/* <td>{item.flowRateLpm.toFixed(0)} L/min</td> */}
                     <td>{item.valveOpen ? 'Open' : 'Closed'}</td>

@@ -14,7 +14,7 @@ interface NavbarFrameProps {
     | 'notif'
     | 'logs'
     | 'admin'
-    | 'parameters';
+    | 'calibration';
 }
 
 export default function NavbarFrame({ title, active }: NavbarFrameProps) {

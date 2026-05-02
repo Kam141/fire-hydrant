@@ -89,6 +89,7 @@ Ketika threshold terpenuhi, valve otomatis membuka untuk mitigasi kebakaran.`;
         <section className={styles.kpiStrip}>
           <MetricBox label="Fire Percentage" value={`${state?.sensor.firePercent.toFixed(0) ?? '-'}%`} sub="Real-time sensor" />
           <MetricBox label="Temperature" value={`${state?.sensor.temperatureC.toFixed(1) ?? '-'}°C`} sub="Live reading" />
+          <MetricBox label="Smoke Level" value={`${((state?.sensor.pressureBar ?? 0) * 100).toFixed(0)}%`} sub="Smoke intensity" />
           {/* <MetricBox label="Pressure" value={`${state?.sensor.pressureBar.toFixed(2) ?? '-'} bar`} sub="Hydrant line" /> */}
           <MetricBox label="System Status" value={<StatusPill level={state?.alertLevel} />} sub={state?.controlMode ?? '-'} />
         </section>

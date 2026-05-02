@@ -26,14 +26,18 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
       };
       
       console.log('[Status API] Real-time data dari Hadoop');
+      console.log('[Status API] Parsed sensor:', JSON.stringify(latestSensor));
       return res.status(200).json({
         ok: true,
         data: systemState,
         source: 'hadoop-logs',
       });
+    } else {
+      console.log('[Status API] Hadoop returned null data (empty file?)');
     }
   } catch (error) {
-    console.warn('[Status API] Gagal membaca dari Hadoop, menggunakan system state fallback:', error);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error('[Status API] Gagal membaca dari Hadoop:', errMsg);
   }
 
   // Fallback: use in-memory system state if Hadoop is unavailable

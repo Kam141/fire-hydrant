@@ -41,10 +41,19 @@ export interface SensorParameters {
   temperatureCriticalThreshold: number;
   firePercentWarningThreshold: number;
   firePercentCriticalThreshold: number;
+  smokePercentWarningThreshold?: number;
+  smokePercentCriticalThreshold?: number;
   pressureThreshold: number;
   flowRateThreshold: number;
   waterLevelThreshold: number;
   waterLevelNotificationEnabled?: boolean;
+  // Sensor calibration fields
+  fireRawMin?: number;    // Raw value for 0% fire
+  fireRawMax?: number;    // Raw value for 100% fire
+  smokeRawMin?: number;   // Raw value for 0% smoke
+  smokeRawMax?: number;   // Raw value for 100% smoke
+  tempRawMin?: number;    // Raw value for minimum temperature
+  tempRawMax?: number;    // Raw value for maximum temperature
   updatedAt?: Date | null;
   updatedBy?: string;
 }

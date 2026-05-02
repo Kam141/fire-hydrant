@@ -6,7 +6,7 @@ import { useRouter } from 'next/router';
 import { useAuth } from '@/context/AuthContext';
 
 interface SidebarFrameProps {
-  active: 'dashboard' | 'auto' | 'manual' | 'notif' | 'logs' | 'admin' | 'parameters';
+  active: 'dashboard' | 'auto' | 'manual' | 'notif' | 'logs' | 'admin' | 'calibration';
 }
 
 
@@ -23,13 +23,15 @@ export default function SidebarFrame({ active }: SidebarFrameProps) {
   const menus = [
     ...baseMenus,
     ...(role === 'admin' 
-      ? [{ key: 'admin' as const, label: 'Manajemen Pengguna', href: '/admin/user-management' }]
+      ? [
+          { key: 'calibration' as const, label: 'Sensor Calibration', href: '/admin/sensor-calibration' },
+          { key: 'admin' as const, label: 'Manajemen Pengguna', href: '/admin/user-management' },
+        ]
       : []),
     ...(role === 'admin' || role === 'petugas'
       ? [
           { key: 'auto', label: 'Kontrol Valve', href: '/auto-control' },
           // { key: 'manual', label: 'Kontrol Manual', href: '/manual-control' },
-          { key: 'parameters' as const, label: 'Parameter Sensor', href: '/parameters' },
         ]
       : []),
   ];

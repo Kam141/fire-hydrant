@@ -1,5 +1,5 @@
 import { appendSensorLog, readLatestSensorFromHadoop } from '@/lib/hadoopClient';
-import { getAdminSensorParameters } from '@/lib/firebaseAdmin';
+import { getAdminSensorParameters, adminDb } from '@/lib/firebaseAdmin';
 import { AlertLevel, SystemState, SensorParameters } from '@/types/system';
 
 const SENSOR_INTERVAL_MS = 5_000;
@@ -8,20 +8,29 @@ const LOG_INTERVAL_MS = 60_000;
 async function resolveAlertLevel(
   temperatureC: number,
   firePercent: number,
+  smokePercent: number,
   parameters: SensorParameters
 ): Promise<AlertLevel> {
   const fireWarning = parameters.firePercentWarningThreshold || 20;
   const fireCritical = parameters.firePercentCriticalThreshold || 50;
+  const smokeWarning = parameters.smokePercentWarningThreshold ?? 30;
+  const smokeCritical = parameters.smokePercentCriticalThreshold ?? 60;
   const tempWarning = parameters.temperatureWarningThreshold || 40;
   const tempCritical = parameters.temperatureCriticalThreshold || 60;
 
-  // KEBAKARAN (CRITICAL): Fire >= Critical AND Temp >= Critical threshold
-  if (firePercent >= fireCritical && temperatureC >= tempCritical) {
+  // KEBAKARAN (CRITICAL): Any critical threshold reached
+  if (
+    (firePercent >= fireCritical && temperatureC >= tempCritical) ||
+    (smokePercent >= smokeCritical && temperatureC >= tempCritical)
+  ) {
     return 'KEBAKARAN';
   }
 
-  // POTENSI_KEBAKARAN (WARNING): Fire >= Warning AND Temp >= Warning threshold
-  if (firePercent >= fireWarning && temperatureC >= tempWarning) {
+  // POTENSI_KEBAKARAN (WARNING): Any warning threshold reached
+  if (
+    (firePercent >= fireWarning && temperatureC >= tempWarning) ||
+    (smokePercent >= smokeWarning && temperatureC >= tempWarning)
+  ) {
     return 'POTENSI_KEBAKARAN';
   }
 
@@ -70,6 +79,11 @@ class HydrantSystem {
 
     this.started = true;
 
+    // Load control state from Firebase on startup
+    this.loadControlState().catch(err => {
+      console.error('Failed to load control state on startup:', err);
+    });
+
     // Fetch parameters immediately on startup
     this.refreshParameters().catch(err => {
       console.error('Initial parameter fetch failed:', err);
@@ -111,6 +125,43 @@ class HydrantSystem {
     return this.state;
   }
 
+  private async loadControlState() {
+    try {
+      const doc = await adminDb.collection('control').doc('valve').get();
+      if (doc.exists) {
+        const data = doc.data();
+        if (data) {
+          this.state.valveOpen = data.valveOpen ?? false;
+          this.state.controlMode = data.controlMode ?? 'AUTO';
+          this.state.lastAction = data.lastAction ?? this.state.lastAction;
+          console.log('[SystemState] Control state loaded from Firebase:', {
+            valveOpen: this.state.valveOpen,
+            controlMode: this.state.controlMode,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('[SystemState] Failed to load control state from Firebase:', error);
+    }
+  }
+
+  private async persistControlState() {
+    try {
+      await adminDb.collection('control').doc('valve').set(
+        {
+          valveOpen: this.state.valveOpen,
+          controlMode: this.state.controlMode,
+          lastAction: this.state.lastAction,
+          updatedAt: new Date(),
+        },
+        { merge: true }
+      );
+      console.log('[SystemState] Control state saved to Firebase');
+    } catch (error) {
+      console.error('[SystemState] Failed to save control state to Firebase:', error);
+    }
+  }
+
   setMode(mode: 'AUTO' | 'MANUAL') {
     this.state.controlMode = mode;
     this.state.lastAction = `Mode diubah ke ${mode} pada ${new Date().toLocaleTimeString('id-ID')}`;
@@ -118,6 +169,11 @@ class HydrantSystem {
     if (mode === 'AUTO') {
       this.applyAutoValveRule();
     }
+
+    // Persist to Firebase
+    this.persistControlState().catch(err => {
+      console.error('Failed to persist mode change:', err);
+    });
 
     return this.state;
   }
@@ -127,6 +183,12 @@ class HydrantSystem {
     this.state.valveOpen = open;
     this.state.sensor.flowRateLpm = open ? 120 : 0;
     this.state.lastAction = `${operator} ${open ? 'membuka' : 'menutup'} valve pada ${new Date().toLocaleTimeString('id-ID')}`;
+    
+    // Persist to Firebase
+    this.persistControlState().catch(err => {
+      console.error('Failed to persist manual valve control:', err);
+    });
+
     return this.state;
   }
 
@@ -148,6 +210,7 @@ class HydrantSystem {
       this.state.alertLevel = await resolveAlertLevel(
         this.state.sensor.temperatureC,
         this.state.sensor.firePercent,
+        this.state.sensor.pressureBar * 100, // Convert pressureBar (0-1) to smoke percentage
         this.parameters
       );
     }

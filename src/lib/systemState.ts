@@ -5,6 +5,20 @@ import { AlertLevel, SystemState, SensorParameters } from '@/types/system';
 const SENSOR_INTERVAL_MS = 5_000;
 const LOG_INTERVAL_MS = 60_000;
 
+/**
+ * Format date/time in Jakarta timezone (Asia/Jakarta)
+ * Returns: "Jumat, 2 Mei 2026, 14:30:45 WIB"
+ */
+function formatJakartaTime(): string {
+  const now = new Date();
+  const jakartaTime = new Intl.DateTimeFormat('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    dateStyle: 'full',
+    timeStyle: 'long',
+  }).format(now);
+  return jakartaTime;
+}
+
 async function resolveAlertLevel(
   temperatureC: number,
   firePercent: number,
@@ -164,7 +178,7 @@ class HydrantSystem {
 
   setMode(mode: 'AUTO' | 'MANUAL') {
     this.state.controlMode = mode;
-    this.state.lastAction = `Mode diubah ke ${mode} pada ${new Date().toLocaleTimeString('id-ID')}`;
+    this.state.lastAction = `Mode diubah ke ${mode} pada ${formatJakartaTime()}`;
 
     if (mode === 'AUTO') {
       this.applyAutoValveRule();
@@ -182,7 +196,7 @@ class HydrantSystem {
     this.state.controlMode = 'MANUAL';
     this.state.valveOpen = open;
     this.state.sensor.flowRateLpm = open ? 120 : 0;
-    this.state.lastAction = `${operator} ${open ? 'membuka' : 'menutup'} valve pada ${new Date().toLocaleTimeString('id-ID')}`;
+    this.state.lastAction = `${operator} ${open ? 'membuka' : 'menutup'} valve pada ${formatJakartaTime()}`;
     
     // Persist to Firebase
     this.persistControlState().catch(err => {

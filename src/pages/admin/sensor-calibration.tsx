@@ -365,4 +365,4 @@ function SensorCalibrationPage() {
   );
 }
 
-export default withRoleProtection(SensorCalibrationPage, ['admin']);
+export default withRoleProtection(SensorCalibrationPage);

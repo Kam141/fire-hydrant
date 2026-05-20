@@ -270,7 +270,7 @@ async function webhdfsRead(): Promise<SensorLogEntry[]> {
 
 export async function readLatestSensorFromHadoop(): Promise<SensorLogEntry | null> {
   const base = getWebHdfsUrl();
-  const remotePath = '/iot/hydrant.txt';
+  const remotePath = process.env.HADOOP_LOG_PATH || '/fire-hydrant/sensor-log.jsonl';
   const hdfsUser = process.env.HADOOP_USER || 'hadoop';
 
   if (!base) throw new Error('HADOOP_WEBHDFS_URL atau HADOOP_NAMENODE_IP belum di-set');
@@ -432,78 +432,10 @@ export async function readLatestSensorFromHadoop(): Promise<SensorLogEntry | nul
   };
 }
 export async function appendSensorLog(entry: SensorLogEntry) {
-  // Helper function to sanitize numeric values (replace NaN/Infinity with 0)
-  const sanitizeNumber = (value: number | undefined | null): number => {
-    if (value === null || value === undefined) return 0;
-    if (!Number.isFinite(value)) return 0;
-    return value;
-  };
-
-  // Convert SensorLogEntry back to sensor format
-  const sensorData = {
-    // flame: 4095 = 0% fire, 0 = 100% fire (inverted scale)
-    flame: Math.round(4095 * (1 - sanitizeNumber(entry.firePercent) / 100)),
-    // water: 0 = empty, 1 = full
-    water: sanitizeNumber(entry.waterLevelPercent) / 100,
-    // gas: 0 = 0% smoke, 1000 = 100% smoke
-    gas: Math.round(sanitizeNumber(entry.pressureBar) * 1000), // pressureBar stores smoke % / 100
-    temp: sanitizeNumber(entry.temperatureC),
-    hum: 0,
-    fire: entry.alertLevel === 'KEBAKARAN',
-    smoke: entry.alertLevel === 'KEBAKARAN',
-  };
-
-  const line = `${entry.timestamp} | ${JSON.stringify(sensorData)}\n`;
-  const mode = process.env.HADOOP_MODE || 'local';
-  let writeSuccess = false;
- 
-  // ── Tulis ke HDFS atau file lokal ────────────────────────────────────────
-  if (mode.toLowerCase() === 'webhdfs') {
-    try {
-      await webhdfsWrite(line);
-      console.log('[AppendSensorLog] Log berhasil dikirim ke WebHDFS');
-      writeSuccess = true;
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      console.error('[AppendSensorLog] WebHDFS gagal, fallback ke file lokal:', errorMsg);
-    }
-  }
- 
-  if (!writeSuccess) {
-    await ensureFallbackFile();
-    await fs.appendFile(FALLBACK_LOG_FILE, line, 'utf8');
-    console.log('[AppendSensorLog] Log tersimpan ke file lokal: ' + FALLBACK_LOG_FILE);
-  }
- 
-  // ── Kirim notifikasi Telegram (non-blocking, tidak gagalkan proses utama) ─
-  try {
-    // Fetch parameters from Firestore
-    let parameters: SensorParameters = {
-      temperatureWarningThreshold: 40,
-      temperatureCriticalThreshold: 60,
-      firePercentWarningThreshold: 20,
-      firePercentCriticalThreshold: 50,
-      pressureThreshold: 5,
-      flowRateThreshold: 10,
-      waterLevelThreshold: 20,
-      waterLevelNotificationEnabled: true,
-    };
-
-    try {
-      const fetchedParams = await getAdminSensorParameters();
-      if (fetchedParams) {
-        parameters = fetchedParams as SensorParameters;
-      }
-    } catch (paramError) {
-      console.warn('[AppendSensorLog] Failed to fetch parameters from Firestore, using defaults:', paramError);
-    }
-
-    // Ambil 20 entri terbaru untuk ringkasan (baca dari sumber yang tersedia)
-    const recentEntries = await readSensorLogs(20).catch(() => [entry]);
-    await notifyTelegram(entry, parameters, recentEntries);
-  } catch (err) {
-    console.error('[AppendSensorLog] Telegram notify error:', err);
-  }
+  // Appending/sending logs disabled — intentionally no-op to prevent
+  // the web application from writing to Hadoop or the fallback log file.
+  console.log('[AppendSensorLog] Disabled by configuration: skipping write and notifications.');
+  return;
 }
 export async function readSensorLogs(limit = 100): Promise<SensorLogEntry[]> {
   try {

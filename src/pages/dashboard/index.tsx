@@ -12,19 +12,30 @@ function DashboardPage() {
   const [state, setState] = useState<SystemState | null>(null);
   const [logs, setLogs] = useState<SensorLogEntry[]>([]);
   const [parameters, setParameters] = useState<SensorParameters | null>(null);
-  const [dataSource, setDataSource] = useState<'hadoop-logs' | 'system-state'>('system-state');
+  const [dataSource, setDataSource] = useState<'mqtt' | 'hadoop-logs' | 'system-state'>('system-state');
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
   useEffect(() => {
     const load = async () => {
       try {
-        // Fetch status (real-time data from Hadoop)
+        // Fetch status (real-time data from MQTT, Hadoop, or system state)
         const statusResponse = await fetch('/api/status');
         const statusPayload = await statusResponse.json();
         if (statusPayload.ok) {
-          setState(statusPayload.data as SystemState);
+          const newState = statusPayload.data as SystemState;
+          console.log('[Dashboard] Received status:', { 
+            source: statusPayload.source,
+            firePercent: newState.sensor.firePercent,
+            temperatureC: newState.sensor.temperatureC,
+            pressureBar: newState.sensor.pressureBar,
+            waterLevel: newState.sensor.waterLevelPercent,
+            valveOpen: newState.valveOpen,
+          });
+          setState(newState);
           setDataSource(statusPayload.source || 'system-state');
           setLastUpdate(new Date());
+        } else {
+          console.warn('[Dashboard] Status API returned not ok:', statusPayload);
         }
 
         // Fetch trend data from persisted Hadoop logs
@@ -41,7 +52,7 @@ function DashboardPage() {
           setParameters(paramsPayload.data as SensorParameters);
         }
       } catch (err) {
-        console.error('Failed to fetch status:', err);
+        console.error('[Dashboard] Failed to fetch status:', err);
       }
     };
 
@@ -51,10 +62,13 @@ function DashboardPage() {
   }, []);
 
   const getDataSourceLabel = () => {
-    if (dataSource === 'hadoop-logs') {
-      return 'Live Hadoop Logs';
+    if (dataSource === 'mqtt') {
+      return '📡 Live MQTT Stream';
     }
-    return 'System State (Fallback)';
+    if (dataSource === 'hadoop-logs') {
+      return '⬢ Live Hadoop Logs';
+    }
+    return '💾 System State (Fallback)';
   };
 
   const getIncidentInsight = () => {
@@ -87,11 +101,27 @@ Ketika threshold terpenuhi, valve otomatis membuka untuk mitigasi kebakaran.`;
 
       <DashboardFrame title="DASHBOARD (HALAMAN UTAMA)" active="dashboard">
         <section className={styles.kpiStrip}>
-          <MetricBox label="Fire Percentage" value={`${state?.sensor.firePercent.toFixed(0) ?? '-'}%`} sub="Real-time sensor" />
-          <MetricBox label="Temperature" value={`${state?.sensor.temperatureC.toFixed(1) ?? '-'}°C`} sub="Live reading" />
-          <MetricBox label="Smoke Level" value={`${((state?.sensor.pressureBar ?? 0) * 100).toFixed(0)}%`} sub="Smoke intensity" />
+          <MetricBox 
+            label="Fire Percentage" 
+            value={state?.sensor.firePercent !== undefined ? `${state.sensor.firePercent.toFixed(0)}%` : '-'} 
+            sub="Real-time sensor" 
+          />
+          <MetricBox 
+            label="Temperature" 
+            value={state?.sensor.temperatureC !== undefined ? `${state.sensor.temperatureC.toFixed(1)}°C` : '-'} 
+            sub="Live reading" 
+          />
+          <MetricBox 
+            label="Smoke Level" 
+            value={state?.sensor.pressureBar !== undefined ? `${(state.sensor.pressureBar * 100).toFixed(0)}%` : '-'} 
+            sub="Smoke intensity" 
+          />
           {/* <MetricBox label="Pressure" value={`${state?.sensor.pressureBar.toFixed(2) ?? '-'} bar`} sub="Hydrant line" /> */}
-          <MetricBox label="System Status" value={<StatusPill level={state?.alertLevel} />} sub={state?.controlMode ?? '-'} />
+          <MetricBox 
+            label="System Status" 
+            value={<StatusPill level={state?.alertLevel} />} 
+            sub={state?.controlMode ?? '-'} 
+          />
         </section>
 
         <section className={styles.contentGrid}>
@@ -113,13 +143,13 @@ Ketika threshold terpenuhi, valve otomatis membuka untuk mitigasi kebakaran.`;
               <article className={styles.smallTile}>
                 <p>Valve</p>
                 <h4>{state?.valveOpen ? 'Open' : 'Closed'}</h4>
-                <span>Output flow {state?.sensor.flowRateLpm.toFixed(0) ?? '-'} L/min</span>
+                <span>Output flow {state?.sensor.flowRateLpm !== undefined ? state.sensor.flowRateLpm.toFixed(0) : '-'} L/min</span>
               </article>
 
               <article className={styles.smallTile}>
                 <p>Control Mode</p>
                 <h4>{state?.controlMode ?? '-'}</h4>
-                <span>{state?.lastAction ?? '-'}</span>
+                <span>{state?.lastAction ?? 'Waiting for action...'}</span>
               </article>
             </div>
 
@@ -136,13 +166,9 @@ Ketika threshold terpenuhi, valve otomatis membuka untuk mitigasi kebakaran.`;
           <aside className={styles.sidePanel}>
             <MetricBox 
               label="Water Level" 
-              value={
-                !state 
-                  ? "-"
-                  : state.sensor.waterLevelPercent > 0 
-                    ? "Terisi" 
-                    : "Habis"
-              } 
+              value={state?.sensor.waterLevelPercent !== undefined 
+                ? `${state.sensor.waterLevelPercent > 0 ? 'Terisi' : 'Habis'}` 
+                : '-'} 
               sub="Tank reserve" 
             />
             {/* <MetricBox label="Flow Rate" value={`${state?.sensor.flowRateLpm.toFixed(0) ?? '-'} L/min`} sub="Valve throughput" /> */}

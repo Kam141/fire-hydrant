@@ -1,5 +1,6 @@
 import { appendSensorLog, readLatestSensorFromHadoop } from '@/lib/hadoopClient';
 import { getAdminSensorParameters, adminDb } from '@/lib/firebaseAdmin';
+import { initializeMqtt } from '@/lib/mqttClient';
 import { AlertLevel, SystemState, SensorParameters } from '@/types/system';
 
 const SENSOR_INTERVAL_MS = 5_000;
@@ -102,6 +103,11 @@ class HydrantSystem {
     this.refreshParameters().catch(err => {
       console.error('Initial parameter fetch failed:', err);
     });
+
+    // Initialize MQTT after a short delay to allow parameters to load
+    setTimeout(() => {
+      initializeMqtt(this.parameters);
+    }, 1000);
 
     // Refresh parameters every 30 seconds
     this.paramTimer = setInterval(() => {

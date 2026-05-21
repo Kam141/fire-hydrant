@@ -25,16 +25,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 async function handleGet(req: NextApiRequest, res: NextApiResponse) {
   const limit = Number(req.query.limit ?? '50');
+  const hadoopOnly = req.query.hadoopOnly === '1' || req.query.hadoopOnly === 'true';
 
-  // Check cache first
+  // Use cache only when not forcing direct Hadoop reads.
   const now = Date.now();
-  if (logsCache && (now - logsCache.timestamp) < LOGS_CACHE_TTL_MS) {
+  if (!hadoopOnly && logsCache && (now - logsCache.timestamp) < LOGS_CACHE_TTL_MS) {
     const cachedData = logsCache.data.slice(0, limit);
     return res.status(200).json({ ok: true, data: cachedData, cached: true });
   }
 
   try {
-    const logs = await readSensorLogs(Number.isFinite(limit) ? limit : 50);
+    const logs = await readSensorLogs(Number.isFinite(limit) ? limit : 50, !hadoopOnly);
     
     // Update cache
     logsCache = { data: logs, timestamp: now };
@@ -42,8 +43,7 @@ async function handleGet(req: NextApiRequest, res: NextApiResponse) {
     return res.status(200).json({ ok: true, data: logs, cached: false });
   } catch (error) {
     console.error(error);
-    // Return stale cache if available
-    if (logsCache) {
+    if (!hadoopOnly && logsCache) {
       const cachedData = logsCache.data.slice(0, limit);
       return res.status(200).json({ ok: true, data: cachedData, cached: true, stale: true });
     }

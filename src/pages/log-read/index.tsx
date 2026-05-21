@@ -13,11 +13,26 @@ export default function LogReadPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState<number | 'all'>(10);
+  const [serverUnavailable, setServerUnavailable] = useState(false);
 
   const loadLogs = async () => {
-    const response = await fetch('/api/logs?limit=500');
-    const payload = await response.json();
-    if (payload.ok) setLogs(payload.data as SensorLogEntry[]);
+    try {
+      const response = await fetch('/api/logs?limit=500&hadoopOnly=1');
+      const payload = await response.json();
+
+      if (!response.ok || !payload.ok) {
+        setLogs([]);
+        setServerUnavailable(true);
+        return;
+      }
+
+      setLogs(payload.data as SensorLogEntry[]);
+      setServerUnavailable(false);
+    } catch (error) {
+      console.error('Error loading Hadoop logs:', error);
+      setLogs([]);
+      setServerUnavailable(true);
+    }
   };
 
   useEffect(() => {
@@ -196,13 +211,19 @@ export default function LogReadPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredLogs.length === 0 && (
+                {serverUnavailable ? (
+                  <tr>
+                    <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: '#dc2626' }}>
+                      Server log Hadoop tidak tersedia. Silakan cek koneksi Hadoop atau tunggu beberapa saat.
+                    </td>
+                  </tr>
+                ) : filteredLogs.length === 0 ? (
                   <tr>
                     <td colSpan={7} style={{ textAlign: 'center', padding: '2rem' }}>
                       {logs.length === 0 ? 'Belum ada log.' : 'Data tidak ditemukan.'}
                     </td>
                   </tr>
-                )}
+                ) : null}
                 {currentLogs.map((item) => (
                   <tr key={`${item.timestamp}-${item.firePercent}`}>
                     <td>{new Date(item.timestamp).toLocaleString('id-ID')}</td>

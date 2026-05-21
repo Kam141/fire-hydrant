@@ -437,12 +437,15 @@ export async function appendSensorLog(entry: SensorLogEntry) {
   console.log('[AppendSensorLog] Disabled by configuration: skipping write and notifications.');
   return;
 }
-export async function readSensorLogs(limit = 100): Promise<SensorLogEntry[]> {
+export async function readSensorLogs(limit = 100, allowFallback = true): Promise<SensorLogEntry[]> {
   try {
     const data = await webhdfsRead();
     return data.slice(-limit).reverse();
   } catch (error) {
-    console.error('Baca WebHDFS gagal, fallback ke file lokal:', error);
+    console.error('Baca WebHDFS gagal:', error);
+    if (!allowFallback) {
+      throw error;
+    }
   }
 
   await ensureFallbackFile();

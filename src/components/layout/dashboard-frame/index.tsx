@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import Link from 'next/link';
 import { ReactNode } from 'react';
 import styles from '@/styles/Dashboard.module.css';
@@ -23,17 +24,21 @@ const menus = [
 ] as const;
 
 export default function DashboardFrame({ title, active, children }: DashboardFrameProps) {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  const toggleSidebar = () => setIsSidebarOpen(prev => !prev);
+  
   return (
     <main className={styles.page}>
       <div className={styles.shell}>
-        
-        {/* Sidebar */}
-        <SidebarFrame active={active} />
 
-        <section className={styles.workspace}>
+        {/* Sidebar */}
+        <SidebarFrame active={active} isOpen={isSidebarOpen} onClose={toggleSidebar} />
+
+        <section className={`${styles.workspace} ${!isSidebarOpen ? styles.workspaceExpanded : ''}`}>
           
           {/* Navbar */}
-          <NavbarFrame title={title} active={active} />
+          <NavbarFrame title={title} active={active} onToggleSidebar={toggleSidebar} />
 
           {/* Content */}
           <div className={styles.workspaceContent}>{children}</div>

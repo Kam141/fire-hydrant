@@ -30,7 +30,7 @@ export default function NotificationPage() {
       <DashboardFrame title="NOTIFIKASI" active="notif">
         <section className={styles.kpiStrip}>
           <MetricBox label="Fire Sensor" value={`${state?.sensor.firePercent.toFixed(1) ?? '-'}%`} sub="Threshold 70%" />
-          <MetricBox label="Temperature" value={`${state?.sensor.temperatureC.toFixed(1) ?? '-'}C`} sub="Threshold 40C" />
+          <MetricBox label="Temperature" value={`${state?.sensor.temperatureC.toFixed(1) ?? '-'}°C`} sub="Threshold 40°C" />
           <MetricBox label="Alert State" value={<StatusPill level={state?.alertLevel} />} sub="Realtime" />
           <MetricBox label="Valve" value={state?.valveOpen ? 'Open' : 'Closed'} sub="Current response" />
         </section>
@@ -38,7 +38,7 @@ export default function NotificationPage() {
         <section className={styles.panelCard}>
           <h2>Telegram Alert Logic</h2>
           <p>
-            Potensi berapi: Sensor api &gt;= 70% dan suhu &gt;= 40C. Berapi: Sensor api = 100% dan suhu &gt;= 60C.
+            Potensi berapi: Sensor api &gt;= 70% dan suhu &gt;= 40°C. Berapi: Sensor api = 100% dan suhu &gt;= 60°C.
           </p>
 
           <div className={styles.ruleBox}>

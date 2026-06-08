@@ -190,7 +190,7 @@ export default function HomePage() {
                     Masuk
                   </Link>
                 </div>
-                <div className={styles.heroBadge}>Fire-safe operation untuk tim lapangan</div>
+                {/* <div className={styles.heroBadge}>Fire-safe operation untuk tim lapangan</div> */}
               </div>
 
               {/* <div className={styles.heroRight}>

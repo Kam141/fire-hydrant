@@ -3,17 +3,44 @@ import Head from 'next/head';
 import { useAuth } from '@/context/AuthContext';
 import { withRoleProtection } from '@/components/hoc/withRoleProtection';
 import DashboardFrame from '@/components/layout/dashboard-frame';
-import { SensorParameters } from '@/types/system';
 import styles from '@/styles/Dashboard.module.css';
+
+const InputField = ({ label, field, value, error, onChange }: any) => (
+  <div>
+    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.4rem', color: '#475569' }}>
+      {label}
+    </label>
+    <input
+      type="text"
+      inputMode="numeric"
+      value={value ?? ''}
+      onChange={(e) => onChange(field, e.target.value)}
+      style={{ 
+        width: '100%', 
+        padding: '0.6rem', 
+        borderRadius: '6px', 
+        border: `1px solid ${error ? '#ef4444' : '#cbd5e1'}`, 
+        fontSize: '0.9rem',
+        outlineColor: error ? '#ef4444' : '#3b82f6',
+        backgroundColor: error ? '#fef2f2' : '#fff'
+      }}
+    />
+    {error && (
+      <span style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.4rem', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}>
+        ⚠ {error}
+      </span>
+    )}
+  </div>
+);
 
 function SensorCalibrationPage() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const [parameters, setParameters] = useState<SensorParameters>({
+  const [parameters, setParameters] = useState<any>({
     temperatureWarningThreshold: 40,
     temperatureCriticalThreshold: 60,
     firePercentWarningThreshold: 20,
@@ -32,6 +59,8 @@ function SensorCalibrationPage() {
     tempRawMax: 100,
   });
 
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
   useEffect(() => {
     fetchParameters();
   }, []);
@@ -39,35 +68,70 @@ function SensorCalibrationPage() {
   const fetchParameters = async () => {
     try {
       setLoading(true);
-      setError(null);
+      setApiError(null);
 
       const response = await fetch('/api/parameters');
       const payload = await response.json();
 
       if (payload.success) {
         setParameters(payload.data);
+        // Clear errors on fresh load
+        setErrors({});
       } else {
-        setError(payload.error || 'Failed to fetch parameters');
+        setApiError(payload.error || 'Failed to fetch parameters');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch parameters');
+      setApiError(err instanceof Error ? err.message : 'Failed to fetch parameters');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleInputChange = (field: keyof SensorParameters, value: number) => {
-    setParameters(prev => ({
-      ...prev,
-      [field]: value,
-    }));
+  const validateField = (field: string, value: string) => {
+    if (value === "") return "Field ini wajib diisi";
+    if (/^0[0-9]+/.test(value)) return "Leading zero tidak diperbolehkan";
+    if (/[^0-9.-]/.test(value)) return "Harus berupa angka valid";
+    
+    const num = Number(value);
+    if (isNaN(num)) return "Harus berupa angka";
+
+    const percentFields = [
+      'firePercentWarningThreshold',
+      'firePercentCriticalThreshold',
+      'smokePercentWarningThreshold',
+      'smokePercentCriticalThreshold'
+    ];
+    if (percentFields.includes(field)) {
+      if (num < 0 || num > 100) return "Nilai harus antara 0 dan 100";
+    }
+    return "";
   };
 
+  const handleInputChange = (field: string, value: string) => {
+    const errorMsg = validateField(field, value);
+    setErrors(prev => ({ ...prev, [field]: errorMsg }));
+    setParameters((prev: any) => ({ ...prev, [field]: value }));
+  };
+
+  const hasValidationErrors = Object.values(errors).some(err => err !== "");
+
   const handleSave = async () => {
+    if (hasValidationErrors) return;
+
     try {
       setSaving(true);
-      setError(null);
+      setApiError(null);
       setSuccessMessage(null);
+
+      // Convert values to numbers
+      const dataToSave = { ...parameters };
+      for (const key in dataToSave) {
+        if (key !== 'id' && key !== 'updatedAt' && key !== 'updatedBy' && typeof dataToSave[key] !== 'boolean') {
+          if (dataToSave[key] !== '' && dataToSave[key] !== null) {
+            dataToSave[key] = Number(dataToSave[key]);
+          }
+        }
+      }
 
       const response = await fetch('/api/parameters', {
         method: 'POST',
@@ -75,7 +139,7 @@ function SensorCalibrationPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${await user?.getIdToken() || ''}`,
         },
-        body: JSON.stringify(parameters),
+        body: JSON.stringify(dataToSave),
       });
 
       const result = await response.json();
@@ -88,10 +152,10 @@ function SensorCalibrationPage() {
         setSuccessMessage('Kalibrasi sensor berhasil disimpan');
         setTimeout(() => setSuccessMessage(null), 3000);
       } else {
-        setError(result.error);
+        setApiError(result.error);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save parameters');
+      setApiError(err instanceof Error ? err.message : 'Failed to save parameters');
     } finally {
       setSaving(false);
     }
@@ -99,7 +163,7 @@ function SensorCalibrationPage() {
 
   const handleReset = () => {
     fetchParameters();
-    setError(null);
+    setApiError(null);
     setSuccessMessage(null);
   };
 
@@ -123,14 +187,14 @@ function SensorCalibrationPage() {
         <section className={styles.panelCard}>
           <div className={styles.panelHeaderRow} style={{ marginBottom: '1.5rem', borderBottom: '1px solid #eaeaea', paddingBottom: '1rem' }}>
             <div>
-              <h2>Sensor Calibration & Thresholds</h2>
+              {/* <h2>Sensor Calibration & Thresholds</h2> */}
               <p>Configure raw sensor value ranges and alert thresholds for fire, smoke, and temperature detection.</p>
             </div>
           </div>
 
-          {error && (
+          {apiError && (
             <div style={{ backgroundColor: '#fee2e2', color: '#dc2626', padding: '0.75rem 1rem', borderRadius: '6px', marginBottom: '1rem', border: '1px solid #fca5a5' }}>
-              {error}
+              {apiError}
             </div>
           )}
 
@@ -147,56 +211,36 @@ function SensorCalibrationPage() {
               Configure the raw ADC value range for fire detection. Lower raw values indicate more fire/heat.
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.4rem', color: '#475569' }}>
-                  Raw Value @ 0% Fire (Min - No fire)
-                </label>
-                <input
-                  type="number"
-                  value={parameters.fireRawMax ?? 4095}
-                  onChange={(e) => handleInputChange('fireRawMax', Number(e.target.value))}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.4rem', color: '#475569' }}>
-                  Raw Value @ 100% Fire (Max - Full fire)
-                </label>
-                <input
-                  type="number"
-                  value={parameters.fireRawMin ?? 0}
-                  onChange={(e) => handleInputChange('fireRawMin', Number(e.target.value))}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
-                />
-              </div>
+              <InputField 
+                label="Raw Value @ 0% Fire (Min - No fire)" 
+                field="fireRawMax" 
+                value={parameters.fireRawMax} 
+                error={errors.fireRawMax} 
+                onChange={handleInputChange} 
+              />
+              <InputField 
+                label="Raw Value @ 100% Fire (Max - Full fire)" 
+                field="fireRawMin" 
+                value={parameters.fireRawMin} 
+                error={errors.fireRawMin} 
+                onChange={handleInputChange} 
+              />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.4rem', color: '#475569' }}>
-                  Fire Warning Threshold (%)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={parameters.firePercentWarningThreshold}
-                  onChange={(e) => handleInputChange('firePercentWarningThreshold', Number(e.target.value))}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.4rem', color: '#475569' }}>
-                  Fire Critical Threshold (%)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={parameters.firePercentCriticalThreshold}
-                  onChange={(e) => handleInputChange('firePercentCriticalThreshold', Number(e.target.value))}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
-                />
-              </div>
+              <InputField 
+                label="Fire Warning Threshold (%)" 
+                field="firePercentWarningThreshold" 
+                value={parameters.firePercentWarningThreshold} 
+                error={errors.firePercentWarningThreshold} 
+                onChange={handleInputChange} 
+              />
+              <InputField 
+                label="Fire Critical Threshold (%)" 
+                field="firePercentCriticalThreshold" 
+                value={parameters.firePercentCriticalThreshold} 
+                error={errors.firePercentCriticalThreshold} 
+                onChange={handleInputChange} 
+              />
             </div>
           </div>
 
@@ -207,56 +251,36 @@ function SensorCalibrationPage() {
               Configure the raw ADC value range for smoke detection (Gas sensor). Values scale from 0 (no smoke) to 1000 (maximum smoke).
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.4rem', color: '#475569' }}>
-                  Raw Value @ 0% Smoke (Min - No smoke)
-                </label>
-                <input
-                  type="number"
-                  value={parameters.smokeRawMin ?? 0}
-                  onChange={(e) => handleInputChange('smokeRawMin', Number(e.target.value))}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.4rem', color: '#475569' }}>
-                  Raw Value @ 100% Smoke (Max - Heavy smoke)
-                </label>
-                <input
-                  type="number"
-                  value={parameters.smokeRawMax ?? 1000}
-                  onChange={(e) => handleInputChange('smokeRawMax', Number(e.target.value))}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
-                />
-              </div>
+              <InputField 
+                label="Raw Value @ 0% Smoke (Min - No smoke)" 
+                field="smokeRawMin" 
+                value={parameters.smokeRawMin} 
+                error={errors.smokeRawMin} 
+                onChange={handleInputChange} 
+              />
+              <InputField 
+                label="Raw Value @ 100% Smoke (Max - Heavy smoke)" 
+                field="smokeRawMax" 
+                value={parameters.smokeRawMax} 
+                error={errors.smokeRawMax} 
+                onChange={handleInputChange} 
+              />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.4rem', color: '#475569' }}>
-                  Smoke Warning Threshold (%)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={parameters.smokePercentWarningThreshold ?? 30}
-                  onChange={(e) => handleInputChange('smokePercentWarningThreshold', Number(e.target.value))}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.4rem', color: '#475569' }}>
-                  Smoke Critical Threshold (%)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={parameters.smokePercentCriticalThreshold ?? 60}
-                  onChange={(e) => handleInputChange('smokePercentCriticalThreshold', Number(e.target.value))}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
-                />
-              </div>
+              <InputField 
+                label="Smoke Warning Threshold (%)" 
+                field="smokePercentWarningThreshold" 
+                value={parameters.smokePercentWarningThreshold} 
+                error={errors.smokePercentWarningThreshold} 
+                onChange={handleInputChange} 
+              />
+              <InputField 
+                label="Smoke Critical Threshold (%)" 
+                field="smokePercentCriticalThreshold" 
+                value={parameters.smokePercentCriticalThreshold} 
+                error={errors.smokePercentCriticalThreshold} 
+                onChange={handleInputChange} 
+              />
             </div>
           </div>
 
@@ -267,52 +291,36 @@ function SensorCalibrationPage() {
               Configure the raw ADC value range and temperature thresholds for fire detection.
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.4rem', color: '#475569' }}>
-                  Raw Value @ Min Temperature (°C)
-                </label>
-                <input
-                  type="number"
-                  value={parameters.tempRawMin ?? 0}
-                  onChange={(e) => handleInputChange('tempRawMin', Number(e.target.value))}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.4rem', color: '#475569' }}>
-                  Raw Value @ Max Temperature (°C)
-                </label>
-                <input
-                  type="number"
-                  value={parameters.tempRawMax ?? 100}
-                  onChange={(e) => handleInputChange('tempRawMax', Number(e.target.value))}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
-                />
-              </div>
+              <InputField 
+                label="Raw Value @ Min Temperature (°C)" 
+                field="tempRawMin" 
+                value={parameters.tempRawMin} 
+                error={errors.tempRawMin} 
+                onChange={handleInputChange} 
+              />
+              <InputField 
+                label="Raw Value @ Max Temperature (°C)" 
+                field="tempRawMax" 
+                value={parameters.tempRawMax} 
+                error={errors.tempRawMax} 
+                onChange={handleInputChange} 
+              />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.4rem', color: '#475569' }}>
-                  Temperature Warning Threshold (°C)
-                </label>
-                <input
-                  type="number"
-                  value={parameters.temperatureWarningThreshold}
-                  onChange={(e) => handleInputChange('temperatureWarningThreshold', Number(e.target.value))}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.4rem', color: '#475569' }}>
-                  Temperature Critical Threshold (°C)
-                </label>
-                <input
-                  type="number"
-                  value={parameters.temperatureCriticalThreshold}
-                  onChange={(e) => handleInputChange('temperatureCriticalThreshold', Number(e.target.value))}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
-                />
-              </div>
+              <InputField 
+                label="Temperature Warning Threshold (°C)" 
+                field="temperatureWarningThreshold" 
+                value={parameters.temperatureWarningThreshold} 
+                error={errors.temperatureWarningThreshold} 
+                onChange={handleInputChange} 
+              />
+              <InputField 
+                label="Temperature Critical Threshold (°C)" 
+                field="temperatureCriticalThreshold" 
+                value={parameters.temperatureCriticalThreshold} 
+                error={errors.temperatureCriticalThreshold} 
+                onChange={handleInputChange} 
+              />
             </div>
           </div>
 
@@ -335,15 +343,16 @@ function SensorCalibrationPage() {
             </button>
             <button
               onClick={handleSave}
-              disabled={saving || loading}
+              disabled={saving || loading || hasValidationErrors}
               className={styles.button}
               style={{
                 padding: '0.6rem 1.2rem',
-                backgroundColor: '#3b82f6',
+                backgroundColor: hasValidationErrors ? '#94a3b8' : '#3b82f6',
                 color: 'white',
                 border: 'none',
-                cursor: saving || loading ? 'not-allowed' : 'pointer',
-                opacity: saving || loading ? 0.6 : 1,
+                cursor: saving || loading || hasValidationErrors ? 'not-allowed' : 'pointer',
+                opacity: saving || loading || hasValidationErrors ? 0.6 : 1,
+                transition: 'background-color 0.2s',
               }}
             >
               {saving ? 'Saving...' : 'Save Calibration'}

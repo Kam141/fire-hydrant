@@ -11,6 +11,7 @@ interface AuthContextValue {
   role:         UserRole | null;
   loading:      boolean;
   signOut:      () => Promise<void>;
+  refreshUser:  () => void;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -18,6 +19,7 @@ const AuthContext = createContext<AuthContextValue>({
   role:    null,
   loading: true,
   signOut: async () => {},
+  refreshUser: () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -62,8 +64,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.replace('/auth/login');
   };
 
+  const refreshUser = () => {
+    if (auth.currentUser) {
+      // Create a shallow copy to trigger re-render
+      setUser({ ...auth.currentUser } as User);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, role, loading, signOut }}>
+    <AuthContext.Provider value={{ user, role, loading, signOut, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -24,30 +24,87 @@
   width: 100%;
   min-height: 100vh;
   border-radius: 0;
-  overflow: hidden;
-  display: grid;
-  grid-template-columns: 250px 1fr;
+  display: block;
   background: rgba(255, 255, 255, 0.92);
   border: none;
   box-shadow: none;
 }
 
 .sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 260px;
+  height: 100vh;
+  z-index: 50;
   background: linear-gradient(180deg, var(--red-800), var(--red-950));
   padding: 18px 14px;
   display: flex;
   flex-direction: column;
-  gap: 30Px;
+  gap: 30px;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-x: hidden;
+  overflow-y: visible;
+}
+
+.sidebarClosed {
+  width: 72px;
+}
+
+.sidebarOpen {
+  width: 260px;
+}
+
+.headerArea {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 50px;
+  margin-bottom: 10px;
+}
+
+.sidebarClosed .headerArea {
+  justify-content: center;
 }
 
 .logoWrap {
   display: flex;
   align-items: center;
   gap: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 14px;
+  width: 180px;
+  transition: opacity 0.2s, width 0.3s;
+  overflow: hidden;
+}
+
+.sidebarClosed .logoWrap {
+  width: 0;
+  opacity: 0;
+  margin: 0;
+}
+
+.logoTextGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebarToggleBtn {
+  width: 38px;
+  height: 38px;
   background: rgba(255, 255, 255, 0.08);
-  padding: 10px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: white;
+  z-index: 60;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.sidebarToggleBtn:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .logoBadge {
@@ -77,14 +134,18 @@
 }
 
 .menu {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
+  overflow-y: auto;
+  flex-grow: 1;
+  padding-right: 4px;
 }
 
 .menuLink {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
   padding: 11px 12px;
   border-radius: 10px;
   color: #ffecec;
@@ -92,6 +153,24 @@
   font-weight: 600;
   border: 1px solid transparent;
   transition: all 0.2s ease;
+  width: 232px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.menuText {
+  transition: opacity 0.2s;
+}
+
+.sidebarClosed .menuLink {
+  width: 44px; /* 72px - 28px padding */
+  padding: 11px 0;
+  justify-content: center;
+}
+
+.sidebarClosed .menuText {
+  opacity: 0;
+  display: none;
 }
 
 .menuDot {
@@ -99,6 +178,7 @@
   height: 8px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
 }
 
 .menuLink:hover {
@@ -106,12 +186,13 @@
   border-color: rgba(255, 255, 255, 0.2);
 }
 
-.menuLinkActive {
+.menuLinkActive, .menuLinkActive:hover {
   background: linear-gradient(120deg, rgba(255, 255, 255, 0.95), rgba(255, 229, 229, 0.92));
   color: var(--red-800);
+  border-color: transparent;
 }
 
-.menuLinkActive .menuDot {
+.menuLinkActive .menuDot, .menuLinkActive:hover .menuDot {
   background: var(--red-700);
 }
 
@@ -134,8 +215,15 @@
 }
 
 .workspace {
+  margin-left: 260px;
   padding: 18px;
+  min-height: 100vh;
   background: linear-gradient(180deg, #f9fafc, #f1f3f8);
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.workspaceExpanded {
+  margin-left: 72px;
 }
 
 .workspaceContent {
@@ -159,6 +247,22 @@
   margin-top: 3px;
   color: var(--ink-500);
   font-size: 13px;
+}
+
+.hamburgerBtn {
+  background: none;
+  border: none;
+  color: var(--ink-700);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  transition: background 0.2s ease;
+}
+
+.hamburgerBtn:hover {
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .userBadgeWrap {
@@ -630,11 +734,24 @@
   color: #4a5568;
 }
 
-@media (max-width: 1080px) {
-  .shell {
-    grid-template-columns: 1fr;
-  }
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 40;
+  backdrop-filter: blur(2px);
+  animation: fadeIn 0.2s ease;
+}
 
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (max-width: 1080px) {
   .sidebar {
     padding: 12px;
   }
@@ -655,6 +772,38 @@
 @media (max-width: 760px) {
   .page {
     padding: 0;
+  }
+  
+  .sidebar {
+    width: 260px;
+    padding: 20px 16px;
+  }
+  
+  .sidebarClosed {
+    width: 260px;
+    transform: translateX(-100%);
+  }
+
+  .sidebarToggleBtn {
+    /* Since it's in a flex container now, we can make it absolute only on mobile closed state */
+  }
+
+  .sidebarClosed .sidebarToggleBtn {
+    position: absolute;
+    right: -48px;
+    top: 20px;
+    background: var(--red-800);
+    border-radius: 0 8px 8px 0;
+    border: none;
+    box-shadow: 4px 0 10px rgba(0,0,0,0.1);
+  }
+
+  .workspace {
+    margin-left: 0;
+  }
+  
+  .workspaceExpanded {
+    margin-left: 0;
   }
 
   .menu {

@@ -10,17 +10,8 @@ import {
   onAuthStateChanged,
   User,
 } from 'firebase/auth';
-import {
-  getFirestore,
-  doc,
-  setDoc,
-  getDoc,
-  serverTimestamp,
-  collection,
-  query,
-  getDocs,
-  updateDoc,
-} from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc, serverTimestamp, collection, query, getDocs, updateDoc } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 import { UserRole, UserProfile, SensorParameters } from '@/types/system';
 
 const firebaseConfig = {
@@ -36,6 +27,7 @@ const firebaseConfig = {
 const app  = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getFirestore(app);
+const storage = getStorage(app);
 const googleProvider = new GoogleAuthProvider();
 
 // ── Firestore: save user document ────────────────────────────────────────────
@@ -229,5 +221,5 @@ export async function updateSensorParameters(
   }
 }
 
-export { auth, db, onAuthStateChanged };
+export { auth, db, storage, onAuthStateChanged };
 export type { User };

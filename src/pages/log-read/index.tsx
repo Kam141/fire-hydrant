@@ -5,8 +5,13 @@ import StatusPill from '@/components/ui/status-pill';
 import styles from '@/styles/Dashboard.module.css';
 import { SensorLogEntry } from '@/types/system';
 
+type SensorLogEntryWithRaw = SensorLogEntry & {
+  temp?: number;
+  flame_pct?: number;
+};
+
 export default function LogReadPage() {
-  const [logs, setLogs] = useState<SensorLogEntry[]>([]);
+  const [logs, setLogs] = useState<SensorLogEntryWithRaw[]>([]);
   const [filterType, setFilterType] = useState<'date' | 'status'>('date');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -26,7 +31,7 @@ export default function LogReadPage() {
         return;
       }
 
-      setLogs(payload.data as SensorLogEntry[]);
+      setLogs(payload.data as SensorLogEntryWithRaw[]);
       setServerUnavailable(false);
     } catch (error) {
       console.error('Error loading Hadoop logs:', error);
@@ -40,6 +45,9 @@ export default function LogReadPage() {
     const timer = setInterval(loadLogs, 10_000);
     return () => clearInterval(timer);
   }, []);
+
+  const getTemperatureC = (item: SensorLogEntryWithRaw) => item.temperatureC ?? item.temp ?? 0;
+  const getFirePercent = (item: SensorLogEntryWithRaw) => item.firePercent ?? item.flame_pct ?? 0;
 
   const filteredLogs = logs.filter(item => {
     let isValid = true;
@@ -225,10 +233,10 @@ export default function LogReadPage() {
                   </tr>
                 ) : null}
                 {currentLogs.map((item) => (
-                  <tr key={`${item.timestamp}-${item.firePercent}`}>
+                  <tr key={`${item.timestamp}-${getFirePercent(item)}`}>
                     <td>{new Date(item.timestamp).toLocaleString('id-ID')}</td>
-                    <td>{item.firePercent.toFixed(1)}</td>
-                    <td>{item.temperatureC.toFixed(1)}</td>
+                    <td>{getFirePercent(item).toFixed(1)}</td>
+                    <td>{getTemperatureC(item).toFixed(1)}</td>
                     <td>{(item.pressureBar * 100).toFixed(1)}</td>
                     {/* <td>{item.pressureBar.toFixed(2)}</td> */}
                     {/* <td>{item.flowRateLpm.toFixed(0)} L/min</td> */}

@@ -59,6 +59,158 @@ async function ensureFallbackFile() {
   }
 }
 
+const sanitizeNumeric = (val: unknown, fallback = 0): number => {
+  if (typeof val === 'number') {
+    return Number.isFinite(val) ? val : fallback;
+  }
+  if (typeof val === 'string' && val.trim() !== '') {
+    const parsed = Number(val);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+  return fallback;
+};
+
+const sanitizePercentage = (val: unknown): number => {
+  const num = sanitizeNumeric(val, NaN);
+  return Number.isFinite(num) ? Math.min(100, Math.max(0, num)) : 0;
+};
+
+const normalizeFirePercent = (sensor: Record<string, unknown>): number => {
+  if (sensor.flame_pct !== undefined) {
+    return sanitizePercentage(sensor.flame_pct);
+  }
+  if (sensor.firePercent !== undefined) {
+    return sanitizePercentage(sensor.firePercent);
+  }
+  if (sensor.flame_raw !== undefined) {
+    return sanitizePercentage(((4095 - sanitizeNumeric(sensor.flame_raw)) / 4095) * 100);
+  }
+  if (sensor.flame !== undefined) {
+    return sanitizePercentage(((4095 - sanitizeNumeric(sensor.flame)) / 4095) * 100);
+  }
+  return 0;
+};
+
+const normalizeSmokePercent = (sensor: Record<string, unknown>): number => {
+  if (sensor.smoke_pct !== undefined) {
+    return sanitizePercentage(sensor.smoke_pct);
+  }
+  if (sensor.smokePercent !== undefined) {
+    return sanitizePercentage(sensor.smokePercent);
+  }
+  if (sensor.gas_raw !== undefined) {
+    return sanitizePercentage((sanitizeNumeric(sensor.gas_raw) / 4095) * 100);
+  }
+  if (sensor.gas !== undefined) {
+    return sanitizePercentage((sanitizeNumeric(sensor.gas) / 1000) * 100);
+  }
+  return 0;
+};
+
+const normalizeWaterLevelPercent = (sensor: Record<string, unknown>): number => {
+  if (sensor.waterLevelPercent !== undefined) {
+    return sanitizePercentage(sensor.waterLevelPercent);
+  }
+  if (sensor.water !== undefined) {
+    const water = sanitizeNumeric(sensor.water, NaN);
+    return Number.isFinite(water)
+      ? water <= 1
+        ? sanitizePercentage(water * 100)
+        : sanitizePercentage(water)
+      : 0;
+  }
+  return 0;
+};
+
+const normalizeTemperature = (sensor: Record<string, unknown>): number => {
+  if (sensor.temperatureC !== undefined) {
+    return sanitizeNumeric(sensor.temperatureC);
+  }
+  return sanitizeNumeric(sensor.temp);
+};
+
+const normalizePressureBar = (sensor: Record<string, unknown>, smokePercent: number): number => {
+  if (sensor.pressureBar !== undefined) {
+    return sanitizeNumeric(sensor.pressureBar);
+  }
+  if (sensor.pressure !== undefined) {
+    return sanitizeNumeric(sensor.pressure);
+  }
+  return sanitizeNumeric(smokePercent / 100);
+};
+
+const normalizeFlowRate = (sensor: Record<string, unknown>): number => {
+  if (sensor.flowRateLpm !== undefined) {
+    return sanitizeNumeric(sensor.flowRateLpm);
+  }
+  if (sensor.flowRate !== undefined) {
+    return sanitizeNumeric(sensor.flowRate);
+  }
+  return 0;
+};
+
+const normalizeValveOpen = (sensor: Record<string, unknown>): boolean => {
+  if (typeof sensor.valveOpen === 'boolean') {
+    return sensor.valveOpen;
+  }
+  if (typeof sensor.relay === 'boolean') {
+    return sensor.relay;
+  }
+  if (sensor.relay !== undefined) {
+    return sanitizeNumeric(sensor.relay) !== 0;
+  }
+  return false;
+};
+
+const normalizeAlertLevel = (
+  sensor: Record<string, unknown>,
+  firePercent: number,
+  smokePercent: number,
+  temperatureC: number
+): 'NORMAL' | 'POTENSI_KEBAKARAN' | 'KEBAKARAN' => {
+  if (typeof sensor.alertLevel === 'string') {
+    const level = sensor.alertLevel.toUpperCase();
+    if (level === 'NORMAL' || level === 'POTENSI_KEBAKARAN' || level === 'KEBAKARAN') {
+      return level;
+    }
+  }
+
+  const fireWarning = sensor.fire_warn === true || sensor.fire === true;
+  const smokeWarning = sensor.smoke_crit === true || sensor.smoke === true;
+
+  if (fireWarning || smokeWarning || firePercent > 50 || smokePercent > 50) {
+    return 'KEBAKARAN';
+  }
+  if (firePercent > 20 || smokePercent > 20 || temperatureC > 40) {
+    return 'POTENSI_KEBAKARAN';
+  }
+  return 'NORMAL';
+};
+
+const mapSensorToLogEntry = (
+  sensor: Record<string, unknown>,
+  timestamp: string
+): SensorLogEntry | null => {
+  const firePercent = normalizeFirePercent(sensor);
+  const smokePercent = normalizeSmokePercent(sensor);
+  const temperatureC = normalizeTemperature(sensor);
+  const waterLevelPercent = normalizeWaterLevelPercent(sensor);
+  const pressureBar = normalizePressureBar(sensor, smokePercent);
+  const entry: SensorLogEntry = {
+    timestamp,
+    temperatureC,
+    firePercent,
+    pressureBar,
+    flowRateLpm: normalizeFlowRate(sensor),
+    waterLevelPercent,
+    valveOpen: normalizeValveOpen(sensor),
+    controlMode: typeof sensor.controlMode === 'string' ? (sensor.controlMode as any) : 'AUTO',
+    alertLevel: normalizeAlertLevel(sensor, firePercent, smokePercent, temperatureC),
+  };
+
+  return entry;
+};
+
 async function parseJsonLines(raw: string): Promise<SensorLogEntry[]> {
   const entries: SensorLogEntry[] = [];
 
@@ -126,59 +278,10 @@ async function parseJsonLines(raw: string): Promise<SensorLogEntry[]> {
       continue;
     }
 
-    // Sensor format mapping with value sanitization:
-    const sanitizeFirePercent = (val: unknown): number => {
-      const num = typeof val === 'number' ? val : 0;
-      return Number.isFinite(num) ? Math.min(100, Math.max(0, num)) : 0;
-    };
-
-    const sanitizePercentage = (val: unknown): number => {
-      const num = typeof val === 'number' ? val : 0;
-      return Number.isFinite(num) ? Math.min(100, Math.max(0, num)) : 0;
-    };
-
-    const sanitizeNumeric = (val: unknown): number => {
-      const num = typeof val === 'number' ? val : 0;
-      return Number.isFinite(num) ? num : 0;
-    };
-
-    // flame: 4095 = 0% fire, 0 = 100% fire (inverted scale)
-    const firePercent = sensor.flame !== undefined
-      ? sanitizeFirePercent(((4095 - (sensor.flame as number)) / 4095) * 100)
-      : 0;
-
-    // water: 0 = empty (0%), 1 = full (100%)
-    const waterLevelPercent = sensor.water !== undefined
-      ? sanitizePercentage((sensor.water as number) * 100)
-      : 0;
-
-    // gas: 0 = 0% smoke, 1000 = 100% smoke
-    const smokePercent = sensor.gas !== undefined
-      ? sanitizePercentage(((sensor.gas as number) / 1000) * 100)
-      : 0;
-
-    const temperatureC = sanitizeNumeric(sensor.temp);
-    const humidity = sensor.hum ?? 0;
-
-    // Alert level based on fire/smoke and temperature
-    let alertLevel: 'NORMAL' | 'POTENSI_KEBAKARAN' | 'KEBAKARAN' = 'NORMAL';
-    if (sensor.fire === true || sensor.smoke === true || firePercent > 50 || smokePercent > 50) {
-      alertLevel = 'KEBAKARAN';
-    } else if (firePercent > 20 || smokePercent > 20 || temperatureC > 40) {
-      alertLevel = 'POTENSI_KEBAKARAN';
+    const entry = mapSensorToLogEntry(sensor, timestamp);
+    if (entry) {
+      entries.push(entry);
     }
-
-    entries.push({
-      timestamp: timestamp,
-      temperatureC: temperatureC,
-      firePercent: firePercent,
-      pressureBar: smokePercent / 100, // Map smoke to pressure for now (0-1 range)
-      flowRateLpm: 0,
-      waterLevelPercent: waterLevelPercent,
-      valveOpen: false,
-      controlMode: 'AUTO',
-      alertLevel: alertLevel,
-    });
   }
 
   return entries;
@@ -378,58 +481,8 @@ export async function readLatestSensorFromHadoop(): Promise<SensorLogEntry | nul
     }
   }
 
-  // Sensor format mapping with value sanitization:
-  // flame: 4095 = 0% fire, 0 = 100% fire (inverted scale)
-  const sanitizeFirePercent = (val: unknown): number => {
-    const num = typeof val === 'number' ? val : 0;
-    return Number.isFinite(num) ? Math.min(100, Math.max(0, num)) : 0;
-  };
-
-  const sanitizePercentage = (val: unknown): number => {
-    const num = typeof val === 'number' ? val : 0;
-    return Number.isFinite(num) ? Math.min(100, Math.max(0, num)) : 0;
-  };
-
-  const sanitizeNumeric = (val: unknown): number => {
-    const num = typeof val === 'number' ? val : 0;
-    return Number.isFinite(num) ? num : 0;
-  };
-
-  const firePercent = sensor.flame !== undefined
-    ? sanitizeFirePercent(((4095 - (sensor.flame as number)) / 4095) * 100)
-    : 0;
-
-  // water: 0 = empty (0%), 1 = full (100%)
-  const waterLevelPercent = sensor.water !== undefined
-    ? sanitizePercentage((sensor.water as number) * 100)
-    : 0;
-
-  // gas: 0 = 0% smoke, 1000 = 100% smoke
-  const smokePercent = sensor.gas !== undefined
-    ? sanitizePercentage(((sensor.gas as number) / 1000) * 100)
-    : 0;
-
-  const temperatureC = sanitizeNumeric(sensor.temp);
-
-  // Alert level based on fire/smoke and temperature
-  let alertLevel: 'NORMAL' | 'POTENSI_KEBAKARAN' | 'KEBAKARAN' = 'NORMAL';
-  if (sensor.fire === true || sensor.smoke === true || firePercent > 50 || smokePercent > 50) {
-    alertLevel = 'KEBAKARAN';
-  } else if (firePercent > 20 || smokePercent > 20 || temperatureC > 40) {
-    alertLevel = 'POTENSI_KEBAKARAN';
-  }
-
-  return {
-    timestamp: timestamp,
-    temperatureC: temperatureC,
-    firePercent: firePercent,
-    pressureBar: smokePercent / 100, // Map smoke to pressure for now (0-1 range)
-    flowRateLpm: 0,
-    waterLevelPercent: waterLevelPercent,
-    valveOpen: false,
-    controlMode: 'AUTO',
-    alertLevel: alertLevel,
-  };
+  const entry = mapSensorToLogEntry(sensor, timestamp);
+  return entry;
 }
 export async function appendSensorLog(entry: SensorLogEntry) {
   // Appending/sending logs disabled — intentionally no-op to prevent

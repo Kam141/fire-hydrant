@@ -139,6 +139,16 @@ export async function updateUserRole(uid: string, newRole: UserRole): Promise<vo
   }
 }
 
+export async function updateUserPhotoURL(uid: string, photoURL: string | null): Promise<void> {
+  try {
+    const ref = doc(db, 'users', uid);
+    await updateDoc(ref, { photoURL });
+  } catch (error) {
+    console.error('Error updating user photo URL:', error);
+    throw error;
+  }
+}
+
 /**
  * Get all users (admin only)
  */

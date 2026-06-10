@@ -75,6 +75,7 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
         timestamp: sensorData.timestamp,
         temperatureC: sensorData.temperatureC,
         firePercent: sensorData.firePercent,
+        smokePercent: sensorData.smokePercent ?? sensorData.pressureBar * 100,
         pressureBar: sensorData.pressureBar,
         flowRateLpm: sensorData.flowRateLpm,
         waterLevelPercent: sensorData.waterLevelPercent,

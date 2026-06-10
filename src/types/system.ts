@@ -16,6 +16,7 @@ export interface SensorSnapshot {
   timestamp: string;
   temperatureC: number;
   firePercent: number;
+  smokePercent: number;
   pressureBar: number;
   flowRateLpm: number;
   waterLevelPercent: number;

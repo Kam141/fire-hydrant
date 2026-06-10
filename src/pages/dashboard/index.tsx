@@ -16,16 +16,16 @@ function DashboardPage() {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
   useEffect(() => {
-    const load = async () => {
+    const loadStatus = async () => {
       try {
-        // Fetch status (real-time data from MQTT, Hadoop, or system state)
         const statusResponse = await fetch('/api/status');
         const statusPayload = await statusResponse.json();
         if (statusPayload.ok) {
           const newState = statusPayload.data as SystemState;
-          console.log('[Dashboard] Received status:', { 
+          console.log('[Dashboard] Received status:', {
             source: statusPayload.source,
             firePercent: newState.sensor.firePercent,
+            smokePercent: newState.sensor.smokePercent,
             temperatureC: newState.sensor.temperatureC,
             pressureBar: newState.sensor.pressureBar,
             waterLevel: newState.sensor.waterLevelPercent,
@@ -37,27 +37,44 @@ function DashboardPage() {
         } else {
           console.warn('[Dashboard] Status API returned not ok:', statusPayload);
         }
+      } catch (err) {
+        console.error('[Dashboard] Failed to fetch status:', err);
+      }
+    };
 
-        // Fetch trend data from persisted Hadoop logs
-        const logsResponse = await fetch('/api/logs?limit=24');
+    const loadTrends = async () => {
+      try {
+        const logsResponse = await fetch('/api/logs?limit=10&hadoopOnly=1');
         const logsPayload = await logsResponse.json();
         if (logsPayload.ok && Array.isArray(logsPayload.data)) {
           setLogs(logsPayload.data as SensorLogEntry[]);
         }
+      } catch (err) {
+        console.error('[Dashboard] Failed to fetch trend logs:', err);
+      }
+    };
 
-        // Fetch parameters for insight display
+    const loadParameters = async () => {
+      try {
         const paramsResponse = await fetch('/api/parameters');
         const paramsPayload = await paramsResponse.json();
         if (paramsPayload.success) {
           setParameters(paramsPayload.data as SensorParameters);
         }
       } catch (err) {
-        console.error('[Dashboard] Failed to fetch status:', err);
+        console.error('[Dashboard] Failed to fetch parameters:', err);
       }
     };
 
-    load();
-    const timer = setInterval(load, 10000);
+    loadStatus();
+    loadTrends();
+    loadParameters();
+
+    const timer = setInterval(() => {
+      loadStatus();
+      loadTrends();
+    }, 1000);
+
     return () => clearInterval(timer);
   }, []);
 
@@ -92,6 +109,7 @@ Ketika threshold terpenuhi, valve otomatis membuka untuk mitigasi kebakaran.`;
   const chartTimestamps = chartLogs.map((entry) => entry.timestamp);
   const fireSeries = chartLogs.map((entry) => entry.firePercent);
   const tempSeries = chartLogs.map((entry) => entry.temperatureC);
+  const smokeSeries = chartLogs.map((entry) => entry.smokePercent);
 
   return (
     <>
@@ -113,7 +131,11 @@ Ketika threshold terpenuhi, valve otomatis membuka untuk mitigasi kebakaran.`;
           />
           <MetricBox 
             label="Smoke Level" 
-            value={state?.sensor.pressureBar !== undefined ? `${(state.sensor.pressureBar * 100).toFixed(0)}%` : '-'} 
+            value={state?.sensor.smokePercent !== undefined 
+              ? `${state.sensor.smokePercent.toFixed(0)}%` 
+              : state?.sensor.pressureBar !== undefined 
+                ? `${(state.sensor.pressureBar * 100).toFixed(0)}%` 
+                : '-'} 
             sub="Smoke intensity" 
           />
           {/* <MetricBox label="Pressure" value={`${state?.sensor.pressureBar.toFixed(2) ?? '-'} bar`} sub="Hydrant line" /> */}
@@ -130,6 +152,12 @@ Ketika threshold terpenuhi, valve otomatis membuka untuk mitigasi kebakaran.`;
               title="Fire Sensor Trend"
               subtitle="Fire intensity (%)"
               values={fireSeries}
+              timestamps={chartTimestamps}
+            />
+            <LinePanel
+              title="Smoke Sensor Trend"
+              subtitle="Smoke intensity (%)"
+              values={smokeSeries}
               timestamps={chartTimestamps}
             />
             <LinePanel

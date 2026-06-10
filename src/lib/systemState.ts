@@ -80,6 +80,7 @@ class HydrantSystem {
         timestamp: new Date().toISOString(),
         temperatureC: 31,
         firePercent: 10,
+        smokePercent: 0,
         pressureBar: 4,
         flowRateLpm: 0,
         waterLevelPercent: 100,
@@ -223,14 +224,16 @@ class HydrantSystem {
     if (sensorData) {
       this.state.sensor.temperatureC = sensorData.temperatureC;
       this.state.sensor.firePercent = sensorData.firePercent;
+      this.state.sensor.smokePercent = sensorData.smokePercent ?? sensorData.pressureBar * 100;
       this.state.sensor.pressureBar = sensorData.pressureBar;
       this.state.sensor.waterLevelPercent = sensorData.waterLevelPercent;
       this.state.alertLevel = sensorData.alertLevel;
     } else {
+      this.state.sensor.smokePercent = this.state.sensor.pressureBar * 100;
       this.state.alertLevel = await resolveAlertLevel(
         this.state.sensor.temperatureC,
         this.state.sensor.firePercent,
-        this.state.sensor.pressureBar * 100, // Convert pressureBar (0-1) to smoke percentage
+        this.state.sensor.smokePercent,
         this.parameters
       );
     }

@@ -200,6 +200,7 @@ const mapSensorToLogEntry = (
     timestamp,
     temperatureC,
     firePercent,
+    smokePercent,
     pressureBar,
     flowRateLpm: normalizeFlowRate(sensor),
     waterLevelPercent,
@@ -227,9 +228,12 @@ async function parseJsonLines(raw: string): Promise<SensorLogEntry[]> {
       jsonStr = trimmed.substring(separatorIndex + 3);
     } else {
       try {
-        const parsed = JSON.parse(trimmed);
+        const parsed = JSON.parse(trimmed) as SensorLogEntry;
         if (parsed.timestamp) {
-          entries.push(parsed as SensorLogEntry);
+          if (parsed.smokePercent === undefined) {
+            parsed.smokePercent = (parsed.pressureBar ?? 0) * 100;
+          }
+          entries.push(parsed);
           continue;
         }
       } catch {

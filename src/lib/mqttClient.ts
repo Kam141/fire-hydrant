@@ -5,6 +5,7 @@ interface MqttSensorData {
   timestamp: string;
   temperatureC: number;
   firePercent: number;
+  smokePercent?: number;
   pressureBar: number;
   flowRateLpm: number;
   waterLevelPercent: number;
@@ -158,7 +159,8 @@ class MqttSensorClient {
             timestamp: payload.timestamp || new Date().toISOString(),
             temperatureC: payload.temperatureC,
             firePercent: payload.firePercent,
-            pressureBar: payload.pressureBar ?? payload.smokePercent ?? 4,
+            smokePercent: payload.smokePercent,
+            pressureBar: payload.pressureBar ?? (payload.smokePercent !== undefined ? payload.smokePercent / 100 : undefined) ?? 4,
             flowRateLpm: payload.flowRateLpm ?? 0,
             waterLevelPercent: payload.waterLevelPercent ?? 100,
             alertLevel: payload.alertLevel,

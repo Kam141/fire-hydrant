@@ -11,7 +11,7 @@ interface AuthContextValue {
   role:         UserRole | null;
   loading:      boolean;
   signOut:      () => Promise<void>;
-  refreshUser:  () => void;
+  refreshUser:  () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -19,7 +19,7 @@ const AuthContext = createContext<AuthContextValue>({
   role:    null,
   loading: true,
   signOut: async () => {},
-  refreshUser: () => {},
+  refreshUser: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -64,9 +64,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.replace('/auth/login');
   };
 
-  const refreshUser = () => {
-    if (auth.currentUser) {
-      // Create a shallow copy to trigger re-render
+  const refreshUser = async () => {
+    if (!auth.currentUser) return;
+
+    try {
+      await auth.currentUser.reload();
+      setUser(auth.currentUser);
+    } catch (error) {
+      console.error('Error refreshing auth user:', error);
       setUser({ ...auth.currentUser } as User);
     }
   };

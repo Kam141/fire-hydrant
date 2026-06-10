@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import { useAuth } from '@/context/AuthContext';
 import { auth, updateUserPhotoURL } from '@/lib/firebaseConfig';
 import { updateProfile } from 'firebase/auth';
@@ -8,6 +9,7 @@ interface ProfileModalProps {
 }
 
 export default function ProfileModal({ onClose }: ProfileModalProps) {
+  const router = useRouter();
   const { user, refreshUser } = useAuth();
   
   const [name, setName] = useState(user?.displayName || '');
@@ -107,12 +109,9 @@ export default function ProfileModal({ onClose }: ProfileModalProps) {
         await updateUserPhotoURL(auth.currentUser.uid, photoURL);
       }
 
-      refreshUser(); // Update Context so navbar updates
+      await refreshUser(); // Update Context so navbar updates
       setSuccess(true);
-      
-      setTimeout(() => {
-        onClose();
-      }, 1500);
+      router.reload();
 
     } catch (err: any) {
       setError(err.message || 'Gagal menyimpan perubahan.');

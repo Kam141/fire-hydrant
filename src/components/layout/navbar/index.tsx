@@ -69,14 +69,24 @@ export default function NavbarFrame({ title, active, onToggleSidebar }: NavbarFr
             
             {user?.photoURL ? (
               <div className={styles.avatarWrap}>
-                <Image
-                  width={33}
-                  height={33}
-                  src={user.photoURL}
-                  alt="User avatar"
-                  priority={false}
-                  className={styles.avatarImg}
-                />
+                {user.photoURL.startsWith('/profiles/') ? (
+                  <img
+                    width={33}
+                    height={33}
+                    src={user.photoURL}
+                    alt="User avatar"
+                    className={styles.avatarImg}
+                  />
+                ) : (
+                  <Image
+                    width={33}
+                    height={33}
+                    src={user.photoURL}
+                    alt="User avatar"
+                    priority={false}
+                    className={styles.avatarImg}
+                  />
+                )}
               </div>
             ) : (
               <div className={styles.avatarInitials}>

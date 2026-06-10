@@ -84,7 +84,8 @@ export default async function handler(
       console.error('[ProfileUpload] Error clearing Next cache for uid', uid, e);
     }
 
-    return res.status(200).json({ publicUrl: `/profiles/${uid}${ext}` });
+    // Append timestamp query to bust caches so clients fetch the updated image
+    return res.status(200).json({ publicUrl: `/profiles/${uid}${ext}?t=${Date.now()}` });
   } catch (error) {
     console.error('Profile upload failed:', error);
     return res.status(500).json({ error: 'Failed to upload profile image.' });

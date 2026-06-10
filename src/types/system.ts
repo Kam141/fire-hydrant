@@ -48,6 +48,11 @@ export interface SensorParameters {
   flowRateThreshold: number;
   waterLevelThreshold: number;
   waterLevelNotificationEnabled?: boolean;
+  telegramSummaryEnabled?: boolean;
+  telegramFireAlertsEnabled?: boolean;
+  telegramManualValveEnabled?: boolean;
+  telegramLowWaterEnabled?: boolean;
+  telegramIntervalMinutes?: number;
   // Sensor calibration fields
   fireRawMin?: number;    // Raw value for 0% fire
   fireRawMax?: number;    // Raw value for 100% fire

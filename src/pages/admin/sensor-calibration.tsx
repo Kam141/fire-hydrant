@@ -5,7 +5,7 @@ import { withRoleProtection } from '@/components/hoc/withRoleProtection';
 import DashboardFrame from '@/components/layout/dashboard-frame';
 import styles from '@/styles/Dashboard.module.css';
 
-const InputField = ({ label, field, value, error, onChange }: any) => (
+const InputField = ({ label, field, value, error, onChange, disabled }: any) => (
   <div>
     <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.4rem', color: '#475569' }}>
       {label}
@@ -15,6 +15,7 @@ const InputField = ({ label, field, value, error, onChange }: any) => (
       inputMode="numeric"
       value={value ?? ''}
       onChange={(e) => onChange(field, e.target.value)}
+      disabled={disabled}
       style={{ 
         width: '100%', 
         padding: '0.6rem', 
@@ -22,7 +23,8 @@ const InputField = ({ label, field, value, error, onChange }: any) => (
         border: `1px solid ${error ? '#ef4444' : '#cbd5e1'}`, 
         fontSize: '0.9rem',
         outlineColor: error ? '#ef4444' : '#3b82f6',
-        backgroundColor: error ? '#fef2f2' : '#fff'
+        backgroundColor: disabled ? '#f8fafc' : error ? '#fef2f2' : '#fff',
+        color: disabled ? '#64748b' : '#0f172a',
       }}
     />
     {error && (
@@ -34,7 +36,8 @@ const InputField = ({ label, field, value, error, onChange }: any) => (
 );
 
 function SensorCalibrationPage() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  const canEdit = role === 'admin' || role === 'petugas';
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -116,6 +119,10 @@ function SensorCalibrationPage() {
   const hasValidationErrors = Object.values(errors).some(err => err !== "");
 
   const handleSave = async () => {
+    if (!canEdit) {
+      setApiError('Hanya Petugas/Admin yang dapat menyimpan konfigurasi ini.');
+      return;
+    }
     if (hasValidationErrors) return;
 
     try {
@@ -217,6 +224,7 @@ function SensorCalibrationPage() {
                 value={parameters.fireRawMax} 
                 error={errors.fireRawMax} 
                 onChange={handleInputChange} 
+                disabled={!canEdit}
               />
               <InputField 
                 label="Raw Value @ 100% Fire (Max - Full fire)" 
@@ -224,6 +232,7 @@ function SensorCalibrationPage() {
                 value={parameters.fireRawMin} 
                 error={errors.fireRawMin} 
                 onChange={handleInputChange} 
+                disabled={!canEdit}
               />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
@@ -233,6 +242,7 @@ function SensorCalibrationPage() {
                 value={parameters.firePercentWarningThreshold} 
                 error={errors.firePercentWarningThreshold} 
                 onChange={handleInputChange} 
+                disabled={!canEdit}
               />
               <InputField 
                 label="Fire Critical Threshold (%)" 
@@ -240,6 +250,7 @@ function SensorCalibrationPage() {
                 value={parameters.firePercentCriticalThreshold} 
                 error={errors.firePercentCriticalThreshold} 
                 onChange={handleInputChange} 
+                disabled={!canEdit}
               />
             </div>
           </div>
@@ -257,6 +268,7 @@ function SensorCalibrationPage() {
                 value={parameters.smokeRawMin} 
                 error={errors.smokeRawMin} 
                 onChange={handleInputChange} 
+                disabled={!canEdit}
               />
               <InputField 
                 label="Raw Value @ 100% Smoke (Max - Heavy smoke)" 
@@ -264,6 +276,7 @@ function SensorCalibrationPage() {
                 value={parameters.smokeRawMax} 
                 error={errors.smokeRawMax} 
                 onChange={handleInputChange} 
+                disabled={!canEdit}
               />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
@@ -273,6 +286,7 @@ function SensorCalibrationPage() {
                 value={parameters.smokePercentWarningThreshold} 
                 error={errors.smokePercentWarningThreshold} 
                 onChange={handleInputChange} 
+                disabled={!canEdit}
               />
               <InputField 
                 label="Smoke Critical Threshold (%)" 
@@ -280,6 +294,7 @@ function SensorCalibrationPage() {
                 value={parameters.smokePercentCriticalThreshold} 
                 error={errors.smokePercentCriticalThreshold} 
                 onChange={handleInputChange} 
+                disabled={!canEdit}
               />
             </div>
           </div>
@@ -297,6 +312,7 @@ function SensorCalibrationPage() {
                 value={parameters.tempRawMin} 
                 error={errors.tempRawMin} 
                 onChange={handleInputChange} 
+                disabled={!canEdit}
               />
               <InputField 
                 label="Raw Value @ Max Temperature (°C)" 
@@ -304,6 +320,7 @@ function SensorCalibrationPage() {
                 value={parameters.tempRawMax} 
                 error={errors.tempRawMax} 
                 onChange={handleInputChange} 
+                disabled={!canEdit}
               />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
@@ -313,6 +330,7 @@ function SensorCalibrationPage() {
                 value={parameters.temperatureWarningThreshold} 
                 error={errors.temperatureWarningThreshold} 
                 onChange={handleInputChange} 
+                disabled={!canEdit}
               />
               <InputField 
                 label="Temperature Critical Threshold (°C)" 
@@ -320,44 +338,52 @@ function SensorCalibrationPage() {
                 value={parameters.temperatureCriticalThreshold} 
                 error={errors.temperatureCriticalThreshold} 
                 onChange={handleInputChange} 
+                disabled={!canEdit}
               />
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-            <button
-              onClick={handleReset}
-              disabled={saving}
-              className={`${styles.button} ${styles.ghost}`}
-              style={{
-                padding: '0.6rem 1.2rem',
-                backgroundColor: '#f1f5f9',
-                color: '#334155',
-                border: '1px solid #cbd5e1',
-                cursor: saving ? 'not-allowed' : 'pointer',
-                opacity: saving ? 0.6 : 1,
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving || loading || hasValidationErrors}
-              className={styles.button}
-              style={{
-                padding: '0.6rem 1.2rem',
-                backgroundColor: hasValidationErrors ? '#94a3b8' : '#3b82f6',
-                color: 'white',
-                border: 'none',
-                cursor: saving || loading || hasValidationErrors ? 'not-allowed' : 'pointer',
-                opacity: saving || loading || hasValidationErrors ? 0.6 : 1,
-                transition: 'background-color 0.2s',
-              }}
-            >
-              {saving ? 'Saving...' : 'Save Calibration'}
-            </button>
-          </div>
+          {!canEdit && (
+            <div style={{ marginBottom: '1rem', padding: '1rem', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', color: '#334155' }}>
+              <strong>Mode hanya lihat:</strong> Anda dapat melihat kalibrasi sensor saat ini, tetapi hanya Petugas/Admin yang dapat mengubahnya.
+            </div>
+          )}
+          {canEdit && (
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+              <button
+                onClick={handleReset}
+                disabled={saving}
+                className={`${styles.button} ${styles.ghost}`}
+                style={{
+                  padding: '0.6rem 1.2rem',
+                  backgroundColor: '#f1f5f9',
+                  color: '#334155',
+                  border: '1px solid #cbd5e1',
+                  cursor: saving ? 'not-allowed' : 'pointer',
+                  opacity: saving ? 0.6 : 1,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving || loading || hasValidationErrors}
+                className={styles.button}
+                style={{
+                  padding: '0.6rem 1.2rem',
+                  backgroundColor: hasValidationErrors ? '#94a3b8' : '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  cursor: saving || loading || hasValidationErrors ? 'not-allowed' : 'pointer',
+                  opacity: saving || loading || hasValidationErrors ? 0.6 : 1,
+                  transition: 'background-color 0.2s',
+                }}
+              >
+                {saving ? 'Saving...' : 'Save Calibration'}
+              </button>
+            </div>
+          )}
 
           <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '1.5rem', padding: '1rem', backgroundColor: '#f0f4f8', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
             <p style={{ margin: '0.5rem 0', fontWeight: 600 }}>💡 Configuration Tips:</p>

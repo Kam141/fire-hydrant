@@ -2,6 +2,58 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { adminDb } from '@/lib/firebaseAdmin';
 
 const TELEGRAM_API = 'https://api.telegram.org';
+
+function normalizeWaterLevelValue(value: unknown): number {
+  if (typeof value === 'boolean') {
+    return value ? 100 : 0;
+  }
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['true', 'high', 'terisi', 'on', 'ya', 'yes', '1'].includes(normalized)) {
+      return 100;
+    }
+    if (['false', 'low', 'habis', 'off', 'tidak', 'no', '0'].includes(normalized)) {
+      return 0;
+    }
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : NaN;
+  }
+  if (typeof value === 'number') {
+    if (value === 0 || value === 1) {
+      return value * 100;
+    }
+    return value;
+  }
+  return NaN;
+}
+
+function formatWaterLevelLabel(value: unknown): string {
+  if (typeof value === 'boolean') {
+    return value ? 'Terisi (HIGH)' : 'Habis (LOW)';
+  }
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['true', 'high', 'terisi', 'on', 'ya', 'yes', '1'].includes(normalized)) {
+      return 'Terisi (HIGH)';
+    }
+    if (['false', 'low', 'habis', 'off', 'tidak', 'no', '0'].includes(normalized)) {
+      return 'Habis (LOW)';
+    }
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? `${parsed.toFixed(1)}%` : value;
+  }
+  if (typeof value === 'number') {
+    if (value === 100) {
+      return 'Terisi (HIGH)';
+    }
+    if (value === 0) {
+      return 'Habis (LOW)';
+    }
+    return `${value.toFixed(1)}%`;
+  }
+  return String(value);
+}
+
 let lastWaterLevelNotificationSentAt = 0;
 const WATER_LEVEL_NOTIFICATION_COOLDOWN_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -24,6 +76,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
+    const numericWaterLevel = normalizeWaterLevelValue(waterLevel);
+    if (Number.isNaN(numericWaterLevel)) {
+      return res.status(400).json({
+        success: false,
+        error: 'waterLevel must be a number, boolean, or valid low/high string',
+      });
+    }
+
     // Fetch parameters from Firestore
     const parametersDoc = await adminDb.collection('parameters').doc('sensors').get();
     
@@ -42,7 +102,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Check if notification should be sent
     const shouldNotify =
       notificationEnabled &&
-      waterLevel < waterLevelThreshold &&
+      numericWaterLevel < waterLevelThreshold &&
       Date.now() - lastWaterLevelNotificationSentAt > WATER_LEVEL_NOTIFICATION_COOLDOWN_MS;
 
     if (shouldNotify) {
@@ -103,7 +163,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
  * Send Telegram notification for low water level
  */
 async function sendWaterLevelNotification(
-  currentLevel: number,
+  currentLevel: number | boolean | string,
   threshold: number
 ): Promise<boolean> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -125,7 +185,7 @@ async function sendWaterLevelNotification(
   });
 
   const message = `⚠️ *PERINGATAN LEVEL AIR*\n\n` +
-    `Level air saat ini: *${currentLevel.toFixed(1)}%*\n` +
+    `Level air saat ini: *${formatWaterLevelLabel(currentLevel)}*\n` +
     `Ambang batas minimum: *${threshold.toFixed(1)}%*\n` +
     `Waktu: ${timestamp}\n\n` +
     `⏰ Silakan isi ulang tangki air segera!`;

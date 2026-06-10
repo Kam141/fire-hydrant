@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { readSensorLogs, appendSensorLog } from '@/lib/hadoopClient';
 import { SensorLogEntry, SensorParameters } from '@/types/system';
 import { adminDb } from '@/lib/firebaseAdmin';
-import { notifyTelegram, notifyLowWater } from '@/lib/telegramNotifier';
+import { notifyTelegram, notifyLowWater, startSummaryCountdown } from '@/lib/telegramNotifier';
 
 function normalizeWaterLevelPercent(value: unknown): number {
   if (typeof value === 'boolean') {
@@ -31,8 +31,15 @@ function normalizeWaterLevelPercent(value: unknown): number {
 // Cache for logs to reduce Hadoop reads
 let logsCache: { data: SensorLogEntry[]; timestamp: number } | null = null;
 const LOGS_CACHE_TTL_MS = 10_000; // 10 seconds cache TTL
+let countdownStarted = false;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Initialize countdown timer on first API call
+  if (!countdownStarted) {
+    countdownStarted = true;
+    startSummaryCountdown();
+  }
+
   if (req.method === 'GET') {
     return handleGet(req, res);
   } else if (req.method === 'POST') {

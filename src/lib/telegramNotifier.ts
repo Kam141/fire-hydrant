@@ -1,5 +1,6 @@
 import { SensorLogEntry, SensorParameters } from '@/types/system';
 import { adminDb } from '@/lib/firebaseAdmin';
+import { readSensorLogs } from '@/lib/hadoopClient';
 
 const TELEGRAM_API = 'https://api.telegram.org';
 
@@ -12,10 +13,17 @@ const WARNING_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes for warning
 // ── Interval rutin: track kapan terakhir ringkasan 10 menit dikirim ──
 let lastSummarySentAt = 0;
 let lastSummarySentAtLoaded = false;
+let lastOfflineNotificationSentAt = 0;
 let lastWaterLevelSentAt = 0;
 const WATER_LEVEL_COOLDOWN_MS = 15 * 60 * 1000;
+const OFFLINE_NOTIFICATION_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes between offline notifications
 
 const NOTIFICATION_DOC_PATH = { collection: 'parameters', doc: 'notifications' };
+
+// ── Background countdown timer ──
+let summaryCountdownTimer: NodeJS.Timeout | null = null;
+const COUNTDOWN_CHECK_INTERVAL_MS = 60 * 1000; // Check every minute
+const LOG_STALENESS_THRESHOLD_MS = 15 * 60 * 1000; // If no logs in 15 minutes, consider offline
 
 function getSummaryIntervalMs(parameters: SensorParameters): number {
   const interval = Number(parameters.telegramIntervalMinutes ?? 10);
@@ -109,6 +117,173 @@ async function saveLastSummarySentAt(timestamp: number): Promise<void> {
     }, { merge: true });
   } catch (err) {
     console.error("[Telegram] Gagal simpan lastSummarySentAt ke Firestore:", err);
+  }
+}
+
+/** ── Background countdown timer function ── */
+async function summaryCountdownCheck(): Promise<void> {
+  try {
+    if (!lastSummarySentAtLoaded) {
+      lastSummarySentAt = await loadLastSummarySentAt();
+      lastSummarySentAtLoaded = true;
+    }
+
+    // Fetch current notification parameters
+    let parameters: SensorParameters = {
+      temperatureWarningThreshold: 40,
+      temperatureCriticalThreshold: 60,
+      firePercentWarningThreshold: 20,
+      firePercentCriticalThreshold: 50,
+      pressureThreshold: 5,
+      flowRateThreshold: 10,
+      waterLevelThreshold: 20,
+      waterLevelNotificationEnabled: true,
+      telegramSummaryEnabled: true,
+      telegramFireAlertsEnabled: true,
+      telegramManualValveEnabled: true,
+      telegramLowWaterEnabled: true,
+      telegramIntervalMinutes: 10,
+    };
+
+    try {
+      const doc = await adminDb.collection('parameters').doc('notifications').get();
+      if (doc.exists) {
+        const data = doc.data();
+        if (data) {
+          parameters = {
+            ...parameters,
+            telegramSummaryEnabled: data.telegramSummaryEnabled !== false,
+            telegramIntervalMinutes: Number.isFinite(data.telegramIntervalMinutes)
+              ? data.telegramIntervalMinutes
+              : 10,
+          };
+        }
+      }
+    } catch (err) {
+      console.error('[Telegram] Gagal baca parameter notifikasi di countdown:', err);
+    }
+
+    if (!parameters.telegramSummaryEnabled) {
+      console.log('[Telegram] Summary disabled, skipping countdown check');
+      return;
+    }
+
+    const now = Date.now();
+    const summaryIntervalMs = getSummaryIntervalMs(parameters);
+    const summaryDue = now - lastSummarySentAt > summaryIntervalMs;
+
+    if (summaryDue) {
+      console.log(`[Telegram] Countdown: interval ${Math.round(summaryIntervalMs / 60000)} menit tercapai`);
+      try {
+        // Read recent logs
+        const recentLogs = await readSensorLogs(50);
+
+        if (recentLogs.length === 0) {
+          // No logs at all
+          console.log('[Telegram] Tidak ada log sensor, kemungkinan hidran offline');
+          const offlineNotificationDue = now - lastOfflineNotificationSentAt > OFFLINE_NOTIFICATION_COOLDOWN_MS;
+          if (offlineNotificationDue) {
+            await sendTelegramMessage(buildOfflineNotification());
+            lastOfflineNotificationSentAt = now;
+          }
+        } else {
+          // Check if most recent log is stale
+          const mostRecentLogTime = new Date(recentLogs[0].timestamp).getTime();
+          const logAge = now - mostRecentLogTime;
+
+          if (logAge > LOG_STALENESS_THRESHOLD_MS) {
+            // Logs exist but are stale
+            console.log(`[Telegram] Log terbaru sudah ${Math.round(logAge / 1000)}s lalu, kemungkinan hidran offline`);
+            const offlineNotificationDue = now - lastOfflineNotificationSentAt > OFFLINE_NOTIFICATION_COOLDOWN_MS;
+            if (offlineNotificationDue) {
+              await sendTelegramMessage(buildOfflineNotification(recentLogs));
+              lastOfflineNotificationSentAt = now;
+            }
+          } else {
+            // Recent logs exist, send summary
+            await sendTelegramMessage(buildSummaryMessage(recentLogs));
+          }
+        }
+
+        lastSummarySentAt = now;
+        await saveLastSummarySentAt(now);
+      } catch (err) {
+        console.error('[Telegram] Gagal di countdown check:', err);
+      }
+    }
+  } catch (err) {
+    console.error('[Telegram] Error dalam summaryCountdownCheck:', err);
+  }
+}
+
+function buildOfflineNotification(recentLogs: SensorLogEntry[] = []): string {
+  if (recentLogs.length === 0) {
+    return [
+      `⚠️ *PERINGATAN: HIDRAN KEMUNGKINAN OFFLINE*`,
+      ``,
+      `Tidak ada data sensor yang diterima sama sekali.`,
+      ``,
+      `🔍 *Kemungkinan Masalah:*`,
+      `  • Sensor tidak terhubung ke jaringan`,
+      `  • Perangkat sedang dalam kondisi offline`,
+      `  • Koneksi MQTT/komunikasi terputus`,
+      `  • Data tidak tersampaikan ke server monitoring`,
+      ``,
+      `⏰ Waktu notifikasi: ${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}`,
+      ``,
+      `_Hubungi tim teknis jika masalah berlanjut._`,
+    ].join('\n');
+  }
+
+  const mostRecentLog = recentLogs[0];
+  const logTime = formatTimestamp(mostRecentLog.timestamp);
+  const now = Date.now();
+  const mostRecentLogTime = new Date(mostRecentLog.timestamp).getTime();
+  const staleness = Math.round((now - mostRecentLogTime) / 1000);
+
+  return [
+    `⚠️ *PERINGATAN: HIDRAN KEMUNGKINAN OFFLINE*`,
+    ``,
+    `Log sensor terakhir diterima ${Math.round(staleness / 60)} menit lalu.`,
+    ``,
+    `📊 *Data Terakhir yang Diterima:*`,
+    `  • Waktu       : ${logTime}`,
+    `  • Api         : *${mostRecentLog.firePercent.toFixed(1)}%*`,
+    `  • Suhu        : *${mostRecentLog.temperatureC.toFixed(1)}°C*`,
+    `  • Smoke       : *${mostRecentLog.smokePercent.toFixed(1)}%*`,
+    `  • Water Level : ${formatWaterLevelLabel(mostRecentLog.waterLevelPercent)}`,
+    `  • Valve       : ${mostRecentLog.valveOpen ? '🔓 OPEN' : '🔒 CLOSED'}`,
+    ``,
+    `🔍 *Kemungkinan Masalah:*`,
+    `  • Sensor kehilangan koneksi jaringan`,
+    `  • Perangkat sedang dalam kondisi offline/hibernasi`,
+    `  • Koneksi MQTT atau komunikasi terputus`,
+    ``,
+    `⏰ Waktu notifikasi: ${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}`,
+    ``,
+    `_Hubungi tim teknis jika masalah berlanjut._`,
+  ].join('\n');
+}
+
+export function startSummaryCountdown(intervalMinutes?: number): void {
+  if (summaryCountdownTimer !== null) {
+    console.log('[Telegram] Countdown timer sudah berjalan, skip inisialisasi.');
+    return;
+  }
+
+  console.log('[Telegram] Memulai background countdown timer...');
+  summaryCountdownTimer = setInterval(() => {
+    summaryCountdownCheck().catch(err => {
+      console.error('[Telegram] Error dalam countdown interval:', err);
+    });
+  }, COUNTDOWN_CHECK_INTERVAL_MS);
+}
+
+export function stopSummaryCountdown(): void {
+  if (summaryCountdownTimer !== null) {
+    clearInterval(summaryCountdownTimer);
+    summaryCountdownTimer = null;
+    console.log('[Telegram] Countdown timer dihentikan.');
   }
 }
 
@@ -421,19 +596,17 @@ async function sendTelegramMessage(text: string): Promise<void> {
 
 /**
  * Dipanggil setiap kali ada log baru masuk (dari appendSensorLog).
- * Menangani dua skenario:
- *   1. Alert darurat jika kondisi mencapai WARNING atau CRITICAL
- *   2. Ringkasan rutin jika sudah 10 menit sejak ringkasan terakhir
+ * Menangani skenario alert darurat jika kondisi mencapai WARNING atau CRITICAL.
+ * Ringkasan rutin ditangani oleh background countdown timer.
  */
 export async function notifyTelegram(
   entry: SensorLogEntry,
   parameters: SensorParameters,
   recentEntries: SensorLogEntry[] = []
 ): Promise<void> {
-  console.log('[Telegram] notifyTelegram called; interval', parameters.telegramIntervalMinutes, 'minutes, summaryEnabled', parameters.telegramSummaryEnabled);
+  console.log('[Telegram] notifyTelegram called (alert checks only); fireAlertsEnabled', parameters.telegramFireAlertsEnabled);
   const now = Date.now();
   const fireAlertsEnabled = parameters.telegramFireAlertsEnabled !== false;
-  const summaryEnabled = parameters.telegramSummaryEnabled !== false;
 
   const alertLevel = determineAlertLevel(entry, parameters);
 
@@ -462,24 +635,6 @@ export async function notifyTelegram(
     } else {
       const remaining = Math.ceil((cooldownMs - (now - lastSentTime)) / 1000);
       console.log(`[Telegram] Alert cooldown aktif (${remaining}s tersisa)`);
-    }
-  }
-
-  if (!lastSummarySentAtLoaded) {
-    lastSummarySentAt = await loadLastSummarySentAt();
-    lastSummarySentAtLoaded = true;
-  }
-
-  const summaryIntervalMs = getSummaryIntervalMs(parameters);
-  const summaryDue = now - lastSummarySentAt > summaryIntervalMs;
-  if (summaryDue && summaryEnabled) {
-    console.log(`[Telegram] Interval ${Math.round(summaryIntervalMs / 60000)} menit tercapai, mengirim ringkasan...`);
-    try {
-      await sendTelegramMessage(buildSummaryMessage(recentEntries));
-      lastSummarySentAt = now;
-      await saveLastSummarySentAt(now);
-    } catch (err) {
-      console.error('[Telegram] Gagal kirim ringkasan:', err);
     }
   }
 }

@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { Dirent } from 'fs';
 
 interface UploadResponse {
   publicUrl?: string;
@@ -49,6 +50,39 @@ export default async function handler(
     const buffer = Buffer.from(base64Data, 'base64');
 
     await fs.writeFile(filePath, buffer);
+
+    // Clear any Next.js image/cache files referencing this uid so profile updates appear instantly
+    try {
+      const nextDir = path.join(process.cwd(), '.next');
+      async function walkAndDelete(dir: string) {
+        let entries: Dirent[] = [];
+        try {
+          entries = await fs.readdir(dir, { withFileTypes: true });
+        } catch (e) {
+          return;
+        }
+
+        await Promise.all(entries.map(async (entry) => {
+          const full = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            await walkAndDelete(full);
+          } else if (entry.isFile()) {
+            if (uid && entry.name.includes(uid)) {
+              try {
+                await fs.unlink(full);
+                console.log('[ProfileUpload] Removed Next cache file:', full);
+              } catch (e) {
+                console.error('[ProfileUpload] Failed removing cache file:', full, e);
+              }
+            }
+          }
+        }));
+      }
+
+      await walkAndDelete(nextDir);
+    } catch (e) {
+      console.error('[ProfileUpload] Error clearing Next cache for uid', uid, e);
+    }
 
     return res.status(200).json({ publicUrl: `/profiles/${uid}${ext}` });
   } catch (error) {

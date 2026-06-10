@@ -210,6 +210,34 @@ export async function getSensorParameters(): Promise<SensorParameters | null> {
   }
 }
 
+/**
+ * Get notification parameters
+ */
+export async function getNotificationParameters(): Promise<Partial<SensorParameters> | null> {
+  try {
+    const ref = doc(db, 'parameters', 'notifications');
+    const snap = await getDoc(ref);
+
+    if (!snap.exists()) return null;
+
+    const data = snap.data();
+    return {
+      id: snap.id,
+      waterLevelNotificationEnabled: data.waterLevelNotificationEnabled ?? true,
+      telegramSummaryEnabled: data.telegramSummaryEnabled ?? true,
+      telegramFireAlertsEnabled: data.telegramFireAlertsEnabled ?? true,
+      telegramManualValveEnabled: data.telegramManualValveEnabled ?? true,
+      telegramLowWaterEnabled: data.telegramLowWaterEnabled ?? true,
+      telegramIntervalMinutes: data.telegramIntervalMinutes ?? 10,
+      updatedAt: data.updatedAt?.toDate() || null,
+      updatedBy: data.updatedBy || null,
+    };
+  } catch (error) {
+    console.error('Error fetching notification parameters:', error);
+    throw error;
+  }
+}
+
 
 /**
  * Update sensor parameters

@@ -53,7 +53,35 @@ export async function getAdminUserProfile(uid: string) {
     throw error;
   }
 }
+/**
+ * Get notification parameters from Firestore using admin SDK (server-side only)
+ */
+export async function getAdminNotificationParameters() {
+  try {
+    const doc = await adminDb.collection('parameters').doc('notifications').get();
 
+    if (!doc.exists) {
+      console.warn('Notification parameters document does not exist');
+      return null;
+    }
+
+    const data = doc.data();
+    return {
+      id: doc.id,
+      waterLevelNotificationEnabled: data?.waterLevelNotificationEnabled ?? true,
+      telegramSummaryEnabled: data?.telegramSummaryEnabled ?? true,
+      telegramFireAlertsEnabled: data?.telegramFireAlertsEnabled ?? true,
+      telegramManualValveEnabled: data?.telegramManualValveEnabled ?? true,
+      telegramLowWaterEnabled: data?.telegramLowWaterEnabled ?? true,
+      telegramIntervalMinutes: data?.telegramIntervalMinutes ?? 10,
+      updatedAt: data?.updatedAt?.toDate?.() ?? null,
+      updatedBy: data?.updatedBy ?? null,
+    };
+  } catch (error) {
+    console.error('Error fetching notification parameters:', error);
+    throw error;
+  }
+}
 /**
  * Get all users using admin SDK
  */
@@ -106,6 +134,10 @@ export async function getAdminSensorParameters() {
       flowRateThreshold:              data?.flowRateThreshold              ?? 10,
       waterLevelThreshold:            data?.waterLevelThreshold            ?? 20,
       waterLevelNotificationEnabled:  data?.waterLevelNotificationEnabled  ?? true,
+      telegramSummaryEnabled:         data?.telegramSummaryEnabled         ?? true,
+      telegramFireAlertsEnabled:      data?.telegramFireAlertsEnabled      ?? true,
+      telegramManualValveEnabled:     data?.telegramManualValveEnabled     ?? true,
+      telegramLowWaterEnabled:        data?.telegramLowWaterEnabled        ?? true,
       updatedAt:                      data?.updatedAt?.toDate?.()          ?? null,
       updatedBy:                      data?.updatedBy                      ?? null,
     };

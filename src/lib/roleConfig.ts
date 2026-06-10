@@ -11,7 +11,7 @@ export const ROLE_BASED_ROUTES: Record<string, UserRole[]> = {
   '/log-read': ['admin', 'petugas', 'user'],
   '/notifications': ['admin', 'petugas', 'user'],
   '/admin/user-management': ['admin'],
-  '/admin/sensor-calibration': ['admin'],
+  '/admin/sensor-calibration': ['admin', 'petugas', 'user'],
 };
 
 /**

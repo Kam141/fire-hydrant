@@ -432,7 +432,7 @@ export default function HomePage() {
       </section>
 
       {/* Testimonials */}
-      <section className={`${styles.section} ${styles.testimonialsSection}`}>
+      {/* <section className={`${styles.section} ${styles.testimonialsSection}`}>
         <div className={styles.container}>
           <motion.div 
             initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }}
@@ -470,7 +470,7 @@ export default function HomePage() {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* CTA Section */}
       <section className={styles.ctaSection}>

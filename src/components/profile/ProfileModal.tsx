@@ -1,9 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { auth, storage } from '@/lib/firebaseConfig';
+import { auth, updateUserPhotoURL } from '@/lib/firebaseConfig';
 import { updateProfile } from 'firebase/auth';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import Image from 'next/image';
 
 interface ProfileModalProps {
   onClose: () => void;
@@ -53,6 +51,21 @@ export default function ProfileModal({ onClose }: ProfileModalProps) {
     }
   };
 
+  const convertFileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          resolve(reader.result);
+        } else {
+          reject(new Error('Failed to read file.'));
+        }
+      };
+      reader.onerror = () => reject(new Error('Failed to read file.'));
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleSave = async () => {
     if (!auth.currentUser) return;
     
@@ -64,21 +77,39 @@ export default function ProfileModal({ onClose }: ProfileModalProps) {
       let photoURL = auth.currentUser.photoURL;
 
       if (photoFile) {
-        const fileExtension = photoFile.name.split('.').pop();
-        const storageRef = ref(storage, `profiles/${auth.currentUser.uid}.${fileExtension}`);
-        await uploadBytes(storageRef, photoFile);
-        photoURL = await getDownloadURL(storageRef);
+        const fileDataUrl = await convertFileToDataUrl(photoFile);
+        const response = await fetch('/api/profile/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            uid: auth.currentUser.uid,
+            fileName: photoFile.name,
+            fileType: photoFile.type,
+            fileData: fileDataUrl,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorPayload = await response.json().catch(() => null);
+          throw new Error(errorPayload?.error || 'Gagal mengunggah foto profil.');
+        }
+
+        const data = await response.json();
+        photoURL = data.publicUrl;
       }
 
       await updateProfile(auth.currentUser, {
         displayName: name,
-        photoURL: photoURL,
+        photoURL,
       });
+
+      if (photoFile && auth.currentUser.uid) {
+        await updateUserPhotoURL(auth.currentUser.uid, photoURL);
+      }
 
       refreshUser(); // Update Context so navbar updates
       setSuccess(true);
       
-      // Auto close after success?
       setTimeout(() => {
         onClose();
       }, 1500);

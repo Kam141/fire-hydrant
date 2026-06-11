@@ -380,113 +380,121 @@ export async function readLatestSensorFromHadoop(): Promise<SensorLogEntry | nul
   const remotePath = process.env.HADOOP_LOG_PATH || '/fire-hydrant/sensor-log.jsonl';
   const hdfsUser = process.env.HADOOP_USER || 'hadoop';
 
-  if (!base) throw new Error('HADOOP_WEBHDFS_URL atau HADOOP_NAMENODE_IP belum di-set');
+  if (!base) {
+    console.warn('[ReadLatestSensorFromHadoop] HDFS config missing, falling back to local fallback log file');
+    const fallbackEntries = await readSensorLogs(1);
+    return fallbackEntries[0] ?? null;
+  }
 
   console.log(`[ReadLatestSensorFromHadoop] Fetching from: ${base}${remotePath}?op=OPEN&user.name=${hdfsUser}`);
 
-  const response = await fetchWithTimeout(
-    `${base}${remotePath}?op=OPEN&user.name=${hdfsUser}`
-  );
-
-  if (!response.ok) {
-    const errorBody = await response.text();
-    console.error(`[ReadLatestSensorFromHadoop] HTTP ${response.status}: ${errorBody}`);
-    throw new Error(`Gagal membaca sensor: ${response.status}`);
-  }
-
-  const raw = await response.text();
-  console.log(`[ReadLatestSensorFromHadoop] Raw data (${raw.length} chars): ${raw.substring(0, 200)}...`);
-  const lines = raw.trim().split('\n').filter(Boolean);
-  
-  if (lines.length === 0) {
-    return null;
-  }
-
-  const lastLine = lines[lines.length - 1];
-  let timestamp: string;
-  let jsonStr: string;
-  const separatorIndex = lastLine.indexOf(' | ');
-  
-  if (separatorIndex === -1) {
-    // No separator - assume raw JSON format from sensor
-    timestamp = new Date().toISOString();
-    jsonStr = lastLine;
-  } else {
-    timestamp = lastLine.substring(0, separatorIndex);
-    jsonStr = lastLine.substring(separatorIndex + 3);
-  }
-
-  let sensor: Record<string, unknown>;
-  // Extract only the JSON object portion (from { to matching }), ignore trailing data
-  let jsonToParse = jsonStr;
-  const jsonStartIdx = jsonStr.indexOf('{');
-  if (jsonStartIdx !== -1) {
-    let braceCount = 0;
-    let jsonEndIdx = jsonStartIdx;
-    for (let i = jsonStartIdx; i < jsonStr.length; i++) {
-      if (jsonStr[i] === '{') braceCount++;
-      if (jsonStr[i] === '}') {
-        braceCount--;
-        if (braceCount === 0) {
-          jsonEndIdx = i;
-          break;
-        }
-      }
-    }
-    jsonToParse = jsonStr.substring(jsonStartIdx, jsonEndIdx + 1);
-  }
-
-  // Sanitize raw JSON string to replace NaN/Infinity with valid numbers
-  const sanitizedJsonStr = jsonToParse
-    .replace(/:\s*NaN\b/g, ': 0')
-    .replace(/:\s*Infinity\b/g, ': 999999')
-    .replace(/:\s*-Infinity\b/g, ': -999999')
-    .replace(/:\s*nan\b/g, ': 0')
-    .replace(/:\s*infinity\b/g, ': 999999')
-    .replace(/:\s*-infinity\b/g, ': -999999');
-
   try {
-    sensor = JSON.parse(sanitizedJsonStr);
-  } catch {
-    console.warn('[ReadLatestSensorFromHadoop] Gagal parse JSON after sanitization, coba parsing lengkap...');
-    try {
-      // For fallback, also extract JSON from lastLine
-      let lastLineJsonToParse = lastLine;
-      const lastLineJsonStartIdx = lastLine.indexOf('{');
-      if (lastLineJsonStartIdx !== -1) {
-        let braceCount = 0;
-        let jsonEndIdx = lastLineJsonStartIdx;
-        for (let i = lastLineJsonStartIdx; i < lastLine.length; i++) {
-          if (lastLine[i] === '{') braceCount++;
-          if (lastLine[i] === '}') {
-            braceCount--;
-            if (braceCount === 0) {
-              jsonEndIdx = i;
-              break;
-            }
-          }
-        }
-        lastLineJsonToParse = lastLine.substring(lastLineJsonStartIdx, jsonEndIdx + 1);
-      }
-      
-      // Sanitize lastLine as well for fallback parsing
-      const sanitizedLastLine = lastLineJsonToParse
-        .replace(/:\s*NaN\b/g, ': 0')
-        .replace(/:\s*Infinity\b/g, ': 999999')
-        .replace(/:\s*-Infinity\b/g, ': -999999')
-        .replace(/:\s*nan\b/g, ': 0')
-        .replace(/:\s*infinity\b/g, ': 999999')
-        .replace(/:\s*-infinity\b/g, ': -999999');
-      
-      sensor = JSON.parse(sanitizedLastLine);
-      timestamp = new Date().toISOString();
-    } catch {
+    const response = await fetchWithTimeout(
+      `${base}${remotePath}?op=OPEN&user.name=${hdfsUser}`
+    );
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error(`[ReadLatestSensorFromHadoop] HTTP ${response.status}: ${errorBody}`);
+      throw new Error(`Gagal membaca sensor: ${response.status}`);
+    }
+
+    const raw = await response.text();
+    console.log(`[ReadLatestSensorFromHadoop] Raw data (${raw.length} chars): ${raw.substring(0, 200)}...`);
+    const lines = raw.trim().split('\n').filter(Boolean);
+
+    if (lines.length === 0) {
       return null;
     }
-  }
 
-  const entry = mapSensorToLogEntry(sensor, timestamp);
-  return entry;
+    const lastLine = lines[lines.length - 1];
+    let timestamp: string;
+    let jsonStr: string;
+    const separatorIndex = lastLine.indexOf(' | ');
+
+    if (separatorIndex === -1) {
+      // No separator - assume raw JSON format from sensor
+      timestamp = new Date().toISOString();
+      jsonStr = lastLine;
+    } else {
+      timestamp = lastLine.substring(0, separatorIndex);
+      jsonStr = lastLine.substring(separatorIndex + 3);
+    }
+
+    let sensor: Record<string, unknown>;
+    let jsonToParse = jsonStr;
+    const jsonStartIdx = jsonStr.indexOf('{');
+    if (jsonStartIdx !== -1) {
+      let braceCount = 0;
+      let jsonEndIdx = jsonStartIdx;
+      for (let i = jsonStartIdx; i < jsonStr.length; i++) {
+        if (jsonStr[i] === '{') braceCount++;
+        if (jsonStr[i] === '}') {
+          braceCount--;
+          if (braceCount === 0) {
+            jsonEndIdx = i;
+            break;
+          }
+        }
+      }
+      jsonToParse = jsonStr.substring(jsonStartIdx, jsonEndIdx + 1);
+    }
+
+    const sanitizedJsonStr = jsonToParse
+      .replace(/:\s*NaN\b/g, ': 0')
+      .replace(/:\s*Infinity\b/g, ': 999999')
+      .replace(/:\s*-Infinity\b/g, ': -999999')
+      .replace(/:\s*nan\b/g, ': 0')
+      .replace(/:\s*infinity\b/g, ': 999999')
+      .replace(/:\s*-infinity\b/g, ': -999999');
+
+    try {
+      sensor = JSON.parse(sanitizedJsonStr);
+    } catch {
+      console.warn('[ReadLatestSensorFromHadoop] Gagal parse JSON after sanitization, coba parsing lengkap...');
+      try {
+        let lastLineJsonToParse = lastLine;
+        const lastLineJsonStartIdx = lastLine.indexOf('{');
+        if (lastLineJsonStartIdx !== -1) {
+          let braceCount = 0;
+          let jsonEndIdx = lastLineJsonStartIdx;
+          for (let i = lastLineJsonStartIdx; i < lastLine.length; i++) {
+            if (lastLine[i] === '{') braceCount++;
+            if (lastLine[i] === '}') {
+              braceCount--;
+              if (braceCount === 0) {
+                jsonEndIdx = i;
+                break;
+              }
+            }
+          }
+          lastLineJsonToParse = lastLine.substring(lastLineJsonStartIdx, jsonEndIdx + 1);
+        }
+
+        const sanitizedLastLine = lastLineJsonToParse
+          .replace(/:\s*NaN\b/g, ': 0')
+          .replace(/:\s*Infinity\b/g, ': 999999')
+          .replace(/:\s*-Infinity\b/g, ': -999999')
+          .replace(/:\s*nan\b/g, ': 0')
+          .replace(/:\s*infinity\b/g, ': 999999')
+          .replace(/:\s*-infinity\b/g, ': -999999');
+
+        sensor = JSON.parse(sanitizedLastLine);
+        timestamp = new Date().toISOString();
+      } catch {
+        console.warn('[ReadLatestSensorFromHadoop] JSON parsing failed for latest line, falling back to local logfile');
+        const fallbackEntries = await readSensorLogs(1);
+        return fallbackEntries[0] ?? null;
+      }
+    }
+
+    const entry = mapSensorToLogEntry(sensor, timestamp);
+    return entry;
+  } catch (error) {
+    console.error('[ReadLatestSensorFromHadoop] WebHDFS read failed, falling back to local logfile:', error);
+    const fallbackEntries = await readSensorLogs(1);
+    return fallbackEntries[0] ?? null;
+  }
 }
 export async function appendSensorLog(entry: SensorLogEntry) {
   // Appending/sending logs disabled — intentionally no-op to prevent
